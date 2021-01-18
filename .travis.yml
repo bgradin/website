@@ -2,6 +2,9 @@ language: node_js
 node_js:
   - "8"
 cache: yarn
+env:
+  global:
+    - 'SFTP_KEY=ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDZ31ufdo/pM1Ktph3SPGiVsLWvo4mD0prX90TUmgb5QnI+pO7yNqKvb4UV3C1qrhTLXX9zudEmPX3KbA65MltuXKQo1T4oSGqNV8o+Ri+iP2pN/c97LDIpsuP32E4pLKEi6h0dm21dN5B7vCjk3XWsRkOInbiq6301fZHkAmhl0qJ6toVmCl2HoSC7QThXyshHWYdZDnQ+gjcba6U9UAd54bYOFMBvKfQRIEg+u5moYTlZOWxtEWHK0SlehdfDMpmIS54M0Q19STtRIwxvtHKJztC7cQ/ap2KKMkDXxn4gCDdglvAvlaZfue+The+rqdEIK+SeHHxf7sc3Zr6c8J5XXnbujTYh7SNIJjrB/LhnQdSMhPqwokU+eIkto59wP5AJGI2EIVPd+rFTm4AEnk6/4mRr4wCFXdLXCtc5YYkJn5tG/s0E4pN1MFBtNGoIJigTjbVldIyhczLXkwd4ah3BU/UU/6j1HbVWiv6b+dgEeEJz7CJbelYrVvbm7+x/b5IkCHSni3Ff0RYtLeQZpCZ/bP1lcQPFt+eY/UFpyobildAjU05HhBXGQOIKUi3IzNNPFWoSS+d8W6Lc/6DtY0itWR3OS4teBYJ3T3go/Fu1u5R482pZYqmx07U+YUD/OohBYFwKIo/mH++EiMIC5+GeZhouMN6sXpbiP5HNQA8s3w== TravisCIDeployKey'
 jobs:
   include:
     - stage: test
