@@ -1,0 +1,21 @@
+language: node_js
+node_js:
+  - "8"
+cache: yarn
+jobs:
+  include:
+    - stage: test
+      script:
+        - yarn
+        - yarn test
+    - stage: deploy
+      script:
+        - yarn
+        - yarn build
+      after_success:
+        - echo "${SFTP_KEY}" | base64 --decode >/tmp/sftp_rsa
+        - curl --ftp-create-dirs -T public --key /tmp/sftp_rsa sftp://${SFTP_USER}:${SFTP_PASSWORD}@gradinware.com
+stages:
+  - name: test
+  - name: deploy
+    if: type = push AND branch = master AND tag IS present
