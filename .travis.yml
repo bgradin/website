@@ -21,4 +21,4 @@ jobs:
 stages:
   - name: test
   - name: deploy
-    if: type = push AND branch = master AND tag IS present
+    if: branch = master AND tag IS present
