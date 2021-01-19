@@ -20,7 +20,7 @@ jobs:
       deploy:
         provider: script
         skip_cleanup: true
-        script: sshpass -p ${SFTP_PASSWORD} scp -r public/* ${SFTP_USER}@${SFTP_HOST}:html
+        script: sshpass -p ${SFTP_PASSWORD} scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null public/* ${SFTP_USER}@${SFTP_HOST}:html
         on:
           tags: true
 
