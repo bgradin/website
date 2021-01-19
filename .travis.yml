@@ -2,6 +2,8 @@ language: node_js
 node_js:
   - "10"
 
+sudo: required
+
 cache: yarn
 
 jobs:
@@ -14,7 +16,7 @@ jobs:
       script:
         - yarn
         - yarn build
-      before_deploy: sudo apt-get install -y sshpass
+      before_deploy: sudo apt-get update && sudo apt-get install -y sshpass
       deploy:
         provider: script
         skip_cleanup: true
