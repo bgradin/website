@@ -14,10 +14,11 @@ jobs:
       script:
         - yarn
         - yarn build
+      before_deploy: sudo apt-get install -y sshpass
       deploy:
         provider: script
         skip_cleanup: true
-        script: /bin/bash ./scripts/deploy.sh
+        script: sshpass -p ${SFTP_PASSWORD} scp -r public/* ${SFTP_USER}@${SFTP_HOST}:html
         on:
           tags: true
 
