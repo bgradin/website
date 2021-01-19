@@ -1,5 +1,7 @@
 # gradinware.com
 
+[![Build Status](https://travis-ci.com/bgradin/website.svg?branch=master)](https://travis-ci.com/bgradin/website)
+
 Public portfolio + personal website for the Gradins
 
 ## Get started
