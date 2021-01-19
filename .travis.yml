@@ -17,9 +17,7 @@ jobs:
       deploy:
         provider: script
         skip_cleanup: true
-        script:
-          - cd public
-          - find . -wholename '*' -printf '%p\n' -type f -exec curl -sk sftp://${SFTP_HOST}:${SFTP_PORT}/~/html/{} -u ${SFTP_USER}:${SFTP_PASSWORD} -T {} --ftp-create-dirs\;
+        script: /bin/bash ./scripts/deploy.sh
         on:
           tags: true
 
