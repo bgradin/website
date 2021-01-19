@@ -4,10 +4,6 @@ node_js:
 
 cache: yarn
 
-env:
-  global:
-    - 'SFTP_KEY=c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFDQVFEWjMxdWZkby9wTTFLdHBoM1NQR2lWc0xXdm80bUQwcHJYOTBUVW1nYjVRbkkrcE83eU5xS3ZiNFVWM0MxcXJoVExYWDl6dWRFbVBYM0tiQTY1TWx0dVhLUW8xVDRvU0dxTlY4bytSaStpUDJwTi9jOTdMRElwc3VQMzJFNHBMS0VpNmgwZG0yMWRONUI3dkNqazNYV3NSa09JbmJpcTYzMDFmWkhrQW1obDBxSjZ0b1ZtQ2wySG9TQzdRVGhYeXNoSFdZZFpEblErZ2pjYmE2VTlVQWQ1NGJZT0ZNQnZLZlFSSUVnK3U1bW9ZVGxaT1d4dEVXSEswU2xlaGRmRE1wbUlTNTRNMFExOVNUdFJJd3h2dEhLSnp0QzdjUS9hcDJLS01rRFh4bjRnQ0RkZ2x2QXZsYVpmdWUrVGhlK3JxZEVJSytTZUhIeGY3c2MzWnI2YzhKNVhYbmJ1alRZaDdTTklKanJCL0xoblFkU01oUHF3b2tVK2VJa3RvNTl3UDVBSkdJMkVJVlBkK3JGVG00QUVuazYvNG1ScjR3Q0ZYZExYQ3RjNVlZa0puNXRHL3MwRTRwTjFNRkJ0TkdvSUppZ1RqYlZsZEl5aGN6TFhrd2Q0YWgzQlUvVVUvNmoxSGJWV2l2NmIrZGdFZUVKejdDSmJlbFlyVnZibTcreC9iNUlrQ0hTbmkzRmYwUll0TGVRWnBDWi9iUDFsY1FQRnQrZVkvVUZweW9iaWxkQWpVMDVIaEJYR1FPSUtVaTNJek5OUEZXb1NTK2Q4VzZMYy82RHRZMGl0V1IzT1M0dGVCWUozVDNnby9GdTF1NVI0ODJwWllxbXgwN1UrWVVEL09vaEJZRndLSW8vbUgrK0VpTUlDNStHZVpob3VNTjZzWHBiaVA1SE5RQThzM3c9PSBUcmF2aXNDSURlcGxveUtleQ=='
-
 jobs:
   include:
     - stage: test
@@ -19,8 +15,9 @@ jobs:
         - yarn
         - yarn build
       after_success:
-        - echo "${SFTP_KEY}" | base64 --decode >/tmp/sftp_rsa
-        - curl --ftp-create-dirs -T public --key /tmp/sftp_rsa sftp://${SFTP_USER}:${SFTP_PASSWORD}@gradinware.com
+        - echo Uploading...
+        - cd public
+        - find . -wholename '*' -printf '%p\n' -type f -exec curl -sk sftp://${SFTP_HOST}:${SFTP_PORT}/~/html/{} -u ${SFTP_USER}:${SFTP_PASSWORD} -T {} --ftp-create-dirs\;
 
 stages:
   - test
