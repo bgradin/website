@@ -61,7 +61,10 @@ export default {
 
 		!production && serve(),
 
-		!production && livereload('src/ui/public'),
+		!production && livereload({
+			watch: 'src/ui/public',
+			port: 5555,
+		}),
 
 		production && terser()
 	],

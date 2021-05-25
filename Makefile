@@ -3,7 +3,7 @@ CONTAINER = gradinware-server-dev
 
 .DEFAULT_GOAL := start
 
-.PHONY: stop start destroy create help
+.PHONY: stop start destroy create dev help
 .SILENT: stop start destroy create node_modules
 
 stop: ## Stop dev server
@@ -19,6 +19,9 @@ destroy: stop ## Destroy dev environment
 
 create: node_modules ## Build dev image
 	docker inspect $(IMAGE) >/dev/null 2>&1 || docker build -t $(IMAGE) .
+
+dev: start ## Start live reload server
+	yarn dev
 
 help: ## List available make commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
