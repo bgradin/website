@@ -13,7 +13,7 @@ Public portfolio + personal website for the Gradins
 
 I'm developing on Windows using [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) through [VSCode](https://code.visualstudio.com/). Theoretically this code should compile anywhere with a bash-like shell.
 
-Run `make` to start a dev server at [localhost:5000](http://localhost:5000).
+Run `make` to start a dev server at [localhost:5000](http://localhost:5000). `make help` lists all available options.
 
 ## Deployment
 
