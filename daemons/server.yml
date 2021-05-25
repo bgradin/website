@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  server:
+    image: localhost:5000/gradinware/server:latest
+    restart: always
+    ports:
+    - "3000:5000"
