@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/core/sdk AS build
 WORKDIR /app
 COPY src/core/Gradinware.csproj .
 RUN dotnet restore
-COPY src/core/* .
+COPY src/core/* ./
 RUN dotnet build -c Release
 RUN dotnet publish -c Release -o /publish
 
@@ -13,5 +13,5 @@ ENV ASPNETCORE_ENVIRONMENT="production"
 
 EXPOSE 5000
 WORKDIR /app
-COPY --from=build /publish .
+COPY --from=build /publish ./
 ENTRYPOINT ["dotnet", "Gradinware.dll"]
