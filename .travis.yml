@@ -21,7 +21,7 @@ jobs:
         provider: script
         skip_cleanup: true
         script: make create &&
-          docker login www.gradinware.com --username ${REGISTRY_USERNAME} --password ${REGISTRY_PASSWORD} &&
+          docker login www.gradinware.com --username '${REGISTRY_USERNAME}' --password '${REGISTRY_PASSWORD}' &&
           docker tag gradinware-server www.gradinware.com/gradinware/server:latest &&
           docker push www.gradinware.com/gradinware/server:latest &&
           sshpass -p ${SFTP_PASSWORD} ssh -p 2345 -oStrictHostKeyChecking=no ${SFTP_USER}@${SFTP_HOST} "mkdir -p src/ui/public" &&
