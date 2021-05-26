@@ -6,3 +6,5 @@ services:
     restart: always
     ports:
     - "3000:5000"
+     volumes:
+    - ../src/ui/public:/public:ro

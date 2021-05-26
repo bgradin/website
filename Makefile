@@ -1,5 +1,5 @@
-IMAGE = gradinware/server
-CONTAINER = gradinware/server-dev
+IMAGE = gradinware-server
+CONTAINER = gradinware-server-dev
 
 .DEFAULT_GOAL := start
 
