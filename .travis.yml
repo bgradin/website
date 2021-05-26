@@ -20,12 +20,11 @@ jobs:
       deploy:
         provider: script
         skip_cleanup: true
-        script:
-          - make create
-          - docker login www.gradinware.com --username ${REGISTRY_USERNAME} --password ${REGISTRY_PASSWORD}
-          - docker tag gradinware/server www.gradinware.com/gradinware/server:latest
-          - docker push www.gradinware.com/gradinware/server:latest
-          - sshpass -p ${SFTP_PASSWORD} scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null src/ui/public/* ${SFTP_USER}@${SFTP_HOST}:src/ui/public
+        script: make create &&
+          docker login www.gradinware.com --username ${REGISTRY_USERNAME} --password ${REGISTRY_PASSWORD} &&
+          docker tag gradinware/server www.gradinware.com/gradinware/server:latest &&
+          docker push www.gradinware.com/gradinware/server:latest &&
+          sshpass -p ${SFTP_PASSWORD} scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null src/ui/public/* ${SFTP_USER}@${SFTP_HOST}:src/ui/public
         on:
           tags: true
 
