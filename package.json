@@ -2,7 +2,7 @@
   "name": "svelte-app",
   "version": "1.0.0",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && rollup --config rollup.ssr.config.js",
     "dev": "rollup -c -w",
     "start": "sirv public",
     "validate": "svelte-check",

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using JavaScriptEngineSwitcher.Extensions.MsDependencyInjection;
+using JavaScriptEngineSwitcher.ChakraCore;
 
 namespace Gradinware
 {
@@ -20,6 +22,9 @@ namespace Gradinware
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddJsEngineSwitcher(options =>
+                options.DefaultEngineName = ChakraCoreJsEngine.EngineName
+            ).AddChakraCore();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -36,6 +41,8 @@ namespace Gradinware
             {
                 FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/public")),
             });
+
+            app.UseJsonContent();
 
             app.UseEndpoints(endpoints =>
             {

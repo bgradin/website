@@ -1,7 +1,6 @@
 # TODO
 
 ## Dev
-- CI + site architecture
 - Server
   - aspnetcore + node: https://josephwoodward.co.uk/2016/09/executing-javascript-inside-dot-net-core-using-javascript-services
   - load json from db, run through app

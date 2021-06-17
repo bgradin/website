@@ -1,5 +1,7 @@
 /node_modules/
 /src/ui/public/build
+data/sqlite
 .DS_Store
 obj/
 bin/
+/src/core/wwwroot/
