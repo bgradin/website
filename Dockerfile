@@ -14,5 +14,5 @@ ENV ASPNETCORE_ENVIRONMENT="production"
 EXPOSE 5000
 WORKDIR /app
 COPY --from=build /publish ./
-COPY src/ui/public/ /public/
+COPY src/ui/ /app/ui/
 ENTRYPOINT ["dotnet", "Gradinware.dll"]

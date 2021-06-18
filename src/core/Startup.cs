@@ -39,7 +39,7 @@ namespace Gradinware
 
             app.UseFileServer(new FileServerOptions
             {
-                FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/public")),
+                FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/app/ui/public")),
             });
 
             app.UseJsonContent();

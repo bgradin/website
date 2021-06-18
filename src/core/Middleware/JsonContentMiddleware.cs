@@ -9,7 +9,7 @@ namespace Gradinware
 {
     public sealed class JsonContentMiddleware
     {
-        private const string HTML_TEMPLATE_PATH = "/public/index.html";
+        private const string HTML_TEMPLATE_PATH = "/app/ui/index.html";
         private const string JS_BUNDLE_PATH = "wwwroot/ssr.js";
 
         private readonly RequestDelegate _next;
@@ -41,7 +41,9 @@ namespace Gradinware
 
         public async Task Invoke(HttpContext context)
         {
-            string path = context.Request.Path;
+            string path = context.Request.Path == "/" || context.Request.Path == ""
+                ? "/index.html"
+                : context.Request.Path.ToString();
             if (Path.GetExtension(path) == ".html")
             {
                 string filePath = "/data" + Path.ChangeExtension(path, ".json");
