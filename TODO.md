@@ -1,8 +1,6 @@
 # TODO
 
 ## Dev
-- Server
-  - hydrate on client side: https://letconst.com/uncategorised/introduction-to-svelte-ssr-with-code-examples
 - templates
   - article
   - edit profile
