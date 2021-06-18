@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Web;
 using JavaScriptEngineSwitcher.Core;
 using Microsoft.AspNetCore.Http;
 
@@ -49,6 +50,7 @@ namespace Gradinware
                     context.Response.ContentType = "text/html; charset=utf-8";
 
                     string json = File.ReadAllText(filePath);
+                    string escapedJson = HttpUtility.JavaScriptStringEncode(json);
                     try
                     {
                         if (!_valid) {
@@ -57,7 +59,9 @@ namespace Gradinware
                             await ReportServerError(context);
                         } else {
                             string html = _js.CallFunction<string>("render", json);
-                            string result = _template.Replace("</body>", html + "\n</body>");
+                            string result = _template
+                                .Replace("</head>", $"<script>window.__INITIAL_DATA__ = JSON.parse(\"{escapedJson}\");</script>")
+                                .Replace("</body>", html + "\n</body>");
                             await context.Response.WriteAsync(result);
                         }
                     }
