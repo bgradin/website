@@ -1,3 +1,4 @@
+using Gradinware.Models.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gradinware.Data

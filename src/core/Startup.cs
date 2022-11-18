@@ -1,12 +1,11 @@
 using System.IO;
+using Gradinware.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using JavaScriptEngineSwitcher.Extensions.MsDependencyInjection;
-using JavaScriptEngineSwitcher.ChakraCore;
 
 namespace Gradinware
 {
@@ -21,10 +20,9 @@ namespace Gradinware
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddAuthorization();
             services.AddControllers();
-            services.AddJsEngineSwitcher(options =>
-                options.DefaultEngineName = ChakraCoreJsEngine.EngineName
-            ).AddChakraCore();
+            services.AddHttpClient<IReactSsrClient, ReactSsrClient>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -37,17 +35,17 @@ namespace Gradinware
             app.UseRouting();
             app.UseAuthorization();
 
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+
             app.UseFileServer(new FileServerOptions
             {
                 FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/app/ui/public")),
             });
 
             app.UseJsonContent();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
         }
     }
 }

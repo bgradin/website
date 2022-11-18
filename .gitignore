@@ -1,7 +1,8 @@
-/node_modules/
-/src/ui/public/build
-data/sqlite
+node_modules/
 .DS_Store
-obj/
+yarn-error.log
+
+data/
 bin/
-/src/core/wwwroot/
+obj/
+src/ui/public/assets/

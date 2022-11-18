@@ -8,14 +8,9 @@ cache: yarn
 
 jobs:
   include:
-    - stage: test
-      script:
-        - yarn
-        - yarn test
     - stage: build
       script:
         - yarn
-        - yarn build
       before_deploy: sudo apt-get update && sudo apt-get install -y sshpass
       deploy:
         provider: script
@@ -31,5 +26,4 @@ jobs:
           tags: true
 
 stages:
-  - test
   - build

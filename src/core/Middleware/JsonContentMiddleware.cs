@@ -1,86 +1,116 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
-using System.Web;
-using JavaScriptEngineSwitcher.Core;
+using Gradinware.Services;
+using Gradinware.Utility;
 using Microsoft.AspNetCore.Http;
 
 namespace Gradinware
 {
     public sealed class JsonContentMiddleware
     {
-        private const string HTML_TEMPLATE_PATH = "/app/ui/index.html";
-        private const string JS_BUNDLE_PATH = "wwwroot/ssr.js";
+        private static readonly string DATA_DIRECTORY = "/data";
 
         private readonly RequestDelegate _next;
-        private readonly IJsEngine _js;
-        private readonly string _template;
-        private readonly string _bundle;
-        private readonly bool _valid;
+        private readonly IReactSsrClient _ssrClient;
 
-        public JsonContentMiddleware(RequestDelegate next)
+        public JsonContentMiddleware(RequestDelegate next, IReactSsrClient ssrClient)
         {
             _next = next;
-            _js = JsEngineSwitcher.Current.CreateDefaultEngine();
-
-            if (File.Exists(HTML_TEMPLATE_PATH))
-            {
-                _template = File.ReadAllText(HTML_TEMPLATE_PATH);
-            }
-
-            if (File.Exists(JS_BUNDLE_PATH))
-            {
-                _bundle = File.ReadAllText(JS_BUNDLE_PATH);
-                _js.Evaluate(_bundle);
-                _js.Evaluate("var render = function(str) { return app.render(JSON.parse(str)).html; };");
-            }
-
-            _js.Evaluate("var renderType = typeof render");
-            _valid = _js.GetVariableValue<string>("renderType") == "function";
+            _ssrClient = ssrClient;
         }
 
-        public async Task Invoke(HttpContext context)
+        public async Task InvokeAsync(HttpContext context)
         {
-            string path = context.Request.Path == "/" || context.Request.Path == ""
-                ? "/index.html"
-                : context.Request.Path.ToString();
-            if (Path.GetExtension(path) == ".html")
-            {
-                string filePath = "/data" + Path.ChangeExtension(path, ".json");
-                if (File.Exists(filePath))
-                {
-                    context.Response.ContentType = "text/html; charset=utf-8";
-
-                    string json = File.ReadAllText(filePath);
-                    string escapedJson = HttpUtility.JavaScriptStringEncode(json);
-                    try
-                    {
-                        if (!_valid) {
-                            context.Response.StatusCode = 500;
-                            await context.Response.WriteAsync("<!-- Error: Invalid/missing render function -->");
-                            await ReportServerError(context);
-                        } else {
-                            string html = _js.CallFunction<string>("render", json);
-                            string result = _template
-                                .Replace("</head>", $"<script>window.__INITIAL_DATA__ = JSON.parse(\"{escapedJson}\");</script>")
-                                .Replace("</body>", html + "\n</body>");
-                            await context.Response.WriteAsync(result);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        context.Response.StatusCode = 500;
-                        await ReportServerError(context, ex);
-                    }
-                }
-                else
-                {
-                    await _next(context);
-                }
+            // Render request path if possible
+            if (await RenderJsonContent(context)) {
+                return;
             }
-            else
+
+            // Allow other middleware
+            await _next(context);
+
+            if (context.Response.StatusCode == 404)
             {
-                await _next(context);
+                // Fallback to 404
+                await RenderJsonContent("/404", context);
+            }
+        }
+
+        private async Task<bool> RenderJsonContent(HttpContext context)
+        {
+            if (!context.Request.Path.HasValue)
+            {
+                return false;
+            }
+
+            var requestPath = context.Request.Path.Value;
+            var extension = Path.GetExtension(requestPath);
+            var filename = Path.GetFileNameWithoutExtension(requestPath);
+            if (extension == ".html")
+            {
+                return await RenderJsonContent(
+                    Path.Combine(Path.GetDirectoryName(requestPath), filename),
+                    context
+                );
+            }
+            // Handle directory indices
+            else if (string.IsNullOrEmpty(extension))
+            {
+                return await RenderJsonContent(
+                    Path.Combine(requestPath, "index"),
+                    context
+                );
+            }
+
+            return false;
+        }
+
+        private async Task<bool> RenderJsonContent(string key, HttpContext context)
+        {
+            string data = await GetJsonData(key);
+            if (string.IsNullOrEmpty(data) || !JsonUtility.IsValid(data))
+            {
+                return false;
+            }
+
+            try
+            {
+                string page = HtmlCache.Exists(key)
+                    ? await HtmlCache.Load(key)
+                    : await RenderJsonContent(key, data);
+                await context.Response.WriteAsync(page);
+            }
+            catch (HttpRequestException ex)
+            {
+                await ReportServerError(context, ex);
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<string> RenderJsonContent(string key, string data)
+        {
+            var page = await _ssrClient.Render(data);
+            await HtmlCache.Store(key, page);
+            return page;
+        }
+
+        private static async Task<string> GetJsonData(string key)
+        {
+            string path = Path.Combine(DATA_DIRECTORY, DirectoryUtility.RemoveLeadingSeparator(key + ".json"));
+            DirectoryUtility.EnsureDirectoryExists(path);
+
+            if (!File.Exists(path))
+            {
+                return string.Empty;
+            }
+
+            using (var file = new StreamReader(path))
+            {
+                return await file.ReadToEndAsync();
             }
         }
 
@@ -113,7 +143,19 @@ namespace Gradinware
                 context.Response.StatusCode = 500;
             }
 
+            await context.Response.WriteAsync($@"<!DOCTYPE html>
+  <html lang=""en"">
+  <head>
+    <meta charset=""utf-8"">
+    <title>Error</title>
+    <link rel=""stylesheet"" href=""https://cdn.simplecss.org/simple.css"">
+  </head>
+  <body>
+");
+
             await writeError();
+
+            await context.Response.WriteAsync("</body></html>");
         }
     }
 }

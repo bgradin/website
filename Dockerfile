@@ -11,8 +11,18 @@ FROM mcr.microsoft.com/dotnet/core/aspnet
 ENV ASPNETCORE_URLS=http://*:5000
 ENV ASPNETCORE_ENVIRONMENT="production"
 
-EXPOSE 5000
 WORKDIR /app
+
+COPY package.json entrypoint.sh .babelrc ./
+
+RUN apt-get update -yq && apt-get upgrade -yq && apt-get install -yq curl git nano
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -yq nodejs build-essential
+RUN npm i
+
 COPY --from=build /publish ./
 COPY src/ui/ /app/ui/
-ENTRYPOINT ["dotnet", "Gradinware.dll"]
+
+EXPOSE 3000
+EXPOSE 5000
+
+ENTRYPOINT /app/entrypoint.sh
