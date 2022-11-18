@@ -16,7 +16,7 @@ jobs:
         provider: script
         skip_cleanup: true
         script: make frontend &&
-          docker build --no-cache=true -t gradinware-server .
+          docker build --no-cache=true -t gradinware-server . &&
           docker login www.gradinware.com --username '${REGISTRY_USERNAME}' --password '${REGISTRY_PASSWORD}' &&
           docker tag gradinware-server www.gradinware.com/gradinware/server:${TRAVIS_TAG} &&
           docker push www.gradinware.com/gradinware/server:${TRAVIS_TAG}
