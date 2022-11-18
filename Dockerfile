@@ -13,9 +13,9 @@ ENV ASPNETCORE_ENVIRONMENT="production"
 
 WORKDIR /app
 
-COPY package.json entrypoint.sh .babelrc ./
+COPY --chmod=0755 package.json entrypoint.sh .babelrc ./
 
-RUN chmod a+x entrypoint.sh && apt-get update -yq && apt-get upgrade -yq && apt-get install -yq curl git nano
+RUN apt-get update -yq && apt-get upgrade -yq && apt-get install -yq curl git nano
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -yq nodejs build-essential
 RUN npm i
 
