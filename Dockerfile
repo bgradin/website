@@ -25,4 +25,4 @@ COPY src/ui/ /app/ui/
 EXPOSE 3000
 EXPOSE 5000
 
-ENTRYPOINT /app/entrypoint.sh
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
