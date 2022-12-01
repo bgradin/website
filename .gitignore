@@ -2,7 +2,8 @@ node_modules/
 .DS_Store
 yarn-error.log
 
-./data/
+data/
+!src/**/data/
 bin/
 obj/
 src/ui/public/assets/
