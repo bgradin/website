@@ -2,7 +2,6 @@ namespace Quilting
 {
   public static class Constants
   {
-    public const string KeyDelimiter = ".";
     public const string QuiltPropertyPrefix = "q:";
     public const string CirclesKey = QuiltPropertyPrefix + "circles";
     public const string ContentKey = QuiltPropertyPrefix + "content";

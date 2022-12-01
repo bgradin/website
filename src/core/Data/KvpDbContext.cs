@@ -5,7 +5,12 @@ namespace Gradinware.Data
 {
   internal abstract class KvpDbContext : SqliteDbContext
   {
-    public DbSet<KeyValuePair> KeyValuePairs { get; set; }
+    public const string KeyDelimiter = ".";
+
+    public DbSet<KeyValuePair> KeyValuePairs
+    {
+      get; set;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -15,8 +20,14 @@ namespace Gradinware.Data
     public class KeyValuePair
     {
       [Key]
-      public string Key { get; set; }
-      public string Value { get; set; }
+      public string Key
+      {
+        get; set;
+      }
+      public string Value
+      {
+        get; set;
+      }
     }
   }
 }

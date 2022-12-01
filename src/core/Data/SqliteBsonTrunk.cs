@@ -12,6 +12,14 @@ namespace Gradinware.Data
   {
     private readonly string _databaseName;
 
+    public string Delimiter
+    {
+      get
+      {
+        return KeyDelimiter;
+      }
+    }
+
     public SqliteBsonTrunk(string databaseName)
     {
       _databaseName = databaseName;
@@ -43,21 +51,38 @@ namespace Gradinware.Data
       var kvp = KeyValuePairs.FirstOrDefault(x => x.Key == key);
       if (kvp == null)
       {
-        return null;
-      }
-
-      var data = Convert.FromBase64String(kvp.Value);
-      using (var stream = new MemoryStream(data))
-      using (var reader = new BsonDataReader(stream))
-      {
-        var token = JToken.ReadFrom(reader);
-        if (token.Type != JTokenType.Object)
+        var keys = KeyValuePairs
+          .Select(x => x.Key)
+          .Where(x => x.StartsWith(key))
+          .ToList()
+          .Where(x => x.Substring(key.Length).StartsWith(Delimiter));
+        var numKeys = keys.Count();
+        if (numKeys == 0)
         {
-          throw new InvalidOperationException();
+          return null;
         }
 
-        return token;
+        var result = new JObject();
+        foreach (var matchingKey in keys)
+        {
+          JToken current = result;
+          JToken finalToken = null;
+          string finalSegment = null;
+          foreach (var segment in matchingKey.Substring(key.Length + 1).Split(Delimiter))
+          {
+            finalSegment = segment;
+            finalToken = current;
+            current[segment] = current[segment] ?? new JObject();
+            current = current[segment];
+          }
+
+          finalToken[finalSegment] = Deserialize(KeyValuePairs.First(x => x.Key == matchingKey).Value);
+        }
+
+        return result;
       }
+
+      return Deserialize(kvp.Value);
     }
 
     public void Stow(string key, JToken value)
@@ -79,6 +104,22 @@ namespace Gradinware.Data
         }
 
         SaveChanges();
+      }
+    }
+
+    private JToken Deserialize(string value)
+    {
+      var data = Convert.FromBase64String(value);
+      using (var stream = new MemoryStream(data))
+      using (var reader = new BsonDataReader(stream))
+      {
+        var token = JToken.ReadFrom(reader);
+        if (token.Type != JTokenType.Object)
+        {
+          throw new InvalidOperationException();
+        }
+
+        return token;
       }
     }
   }

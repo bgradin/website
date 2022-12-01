@@ -40,7 +40,7 @@ namespace Quilting
 
       if (_trunk.GetKeys().Count() > 0)
       {
-        var quilter = _trunk.Retrieve(Constants.QuiltersKey + Constants.KeyDelimiter + id);
+        var quilter = _trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + id);
         if (!Patch.CanConvert(quilter) || !new Patch(quilter).CircleIds.EmptyIfNull().Contains(Constants.LeadCircleId))
         {
           return false;
@@ -49,11 +49,11 @@ namespace Quilting
         _trunk.Clear();
       }
 
-      _trunk.Stow(Constants.QuiltersKey + Constants.KeyDelimiter + id, new JObject
+      _trunk.Stow(Constants.QuiltersKey + _trunk.Delimiter + id, new JObject
       {
         [Patch.CircleIdsKey] = JArray.FromObject(new[] { Constants.LeadCircleId }),
       });
-      _trunk.Stow(Constants.CirclesKey + Constants.KeyDelimiter + Constants.LeadCircleId, new JObject
+      _trunk.Stow(Constants.CirclesKey + _trunk.Delimiter + Constants.LeadCircleId, new JObject
       {
         [Circle.CircleIdsKey] = JArray.FromObject(new[] { Constants.LeadCircleId }),
         [Circle.NameKey] = JValue.FromObject(Constants.LeadCircleName),
@@ -100,7 +100,7 @@ namespace Quilting
             if (!string.IsNullOrEmpty(reference) && !_trunk.GetKeys().Contains(reference))
             {
               JToken newToken = token;
-              foreach (var segment in reference.Split(Constants.KeyDelimiter))
+              foreach (var segment in reference.Split(_trunk.Delimiter))
               {
                 var selectedToken = newToken[segment];
                 if (selectedToken == null)
@@ -132,7 +132,7 @@ namespace Quilting
     {
       var keys = _trunk.GetKeys(prefix);
       var map = new Map();
-      foreach (var segments in keys.Select(x => x.Split(Constants.KeyDelimiter)))
+      foreach (var segments in keys.Select(x => x.Split(_trunk.Delimiter)))
       {
         map.Insert(segments);
       }
@@ -192,17 +192,17 @@ namespace Quilting
 
     public bool CreateCircle(Circle circle, string circleId, string quilterId)
     {
-      return CreatePatch(circle, Constants.CirclesKey + Constants.KeyDelimiter + circleId, quilterId);
+      return CreatePatch(circle, Constants.CirclesKey + _trunk.Delimiter + circleId, quilterId);
     }
 
     public bool CreateQuilter(Patch newQuilter, string newQuilterId, string quilterId)
     {
-      return CreatePatch(newQuilter, Constants.QuiltersKey + Constants.KeyDelimiter + newQuilterId, quilterId);
+      return CreatePatch(newQuilter, Constants.QuiltersKey + _trunk.Delimiter + newQuilterId, quilterId);
     }
 
     private Patch GetQuilter(string quilterId)
     {
-      var token = _trunk.Retrieve(Constants.QuiltersKey + Constants.KeyDelimiter + quilterId);
+      var token = _trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + quilterId);
       if (!Patch.CanConvert(token))
       {
         return null;
@@ -227,10 +227,10 @@ namespace Quilting
       var patch = new Patch(token);
       var value = selector(patch);
 
-      var segments = key.Split(Constants.KeyDelimiter);
+      var segments = key.Split(_trunk.Delimiter);
       return value != null
         ? value
-        : FindPatchValue(string.Join(Constants.KeyDelimiter, segments.Take(segments.Length - 1)), selector);
+        : FindPatchValue(string.Join(_trunk.Delimiter, segments.Take(segments.Length - 1)), selector);
     }
 
     private void VisitPatches(Patch patch, string patchKey, Action<Patch, string> visit)
@@ -243,7 +243,7 @@ namespace Quilting
         var token = patch[keys[i]];
         if (Patch.CanConvert(token))
         {
-          VisitPatches(new Patch(token), patchKey + Constants.KeyDelimiter + keys[i], visit);
+          VisitPatches(new Patch(token), patchKey + _trunk.Delimiter + keys[i], visit);
         }
         else if (token.Type == JTokenType.Array)
         {
@@ -362,7 +362,7 @@ namespace Quilting
       var map = GetMap(Constants.CirclesKey);
       foreach (var key in map.Keys)
       {
-        yield return new Circle(_trunk.Retrieve(Constants.CirclesKey + Constants.KeyDelimiter + key));
+        yield return new Circle(_trunk.Retrieve(Constants.CirclesKey + _trunk.Delimiter + key));
       }
     }
 
@@ -371,7 +371,7 @@ namespace Quilting
       var map = GetMap(Constants.QuiltersKey);
       foreach (var key in map.Keys)
       {
-        yield return new Patch(_trunk.Retrieve(Constants.QuiltersKey + Constants.KeyDelimiter + key));
+        yield return new Patch(_trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + key));
       }
     }
   }

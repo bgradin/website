@@ -54,6 +54,20 @@ namespace Gradinware.Controllers
         : BadRequest();
     }
 
+    [HttpGet]
+    [Route("map")]
+    public IActionResult Map([FromQuery] string key, [FromQuery] string id)
+    {
+      var patch = _quilt.GetPatch(key, id);
+      return patch != null
+        ? new ContentResult
+        {
+          Content = patch.ToJson().ToString(Formatting.None),
+          ContentType = "application/json"
+        }
+        : BadRequest();
+    }
+
     [HttpPost]
     public async Task<IActionResult> Write([FromQuery] string key, [FromQuery] string id)
     {
