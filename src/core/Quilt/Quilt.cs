@@ -41,7 +41,7 @@ namespace Quilting
       if (_trunk.GetKeys().Count() > 0)
       {
         var quilter = _trunk.Retrieve(Constants.QuiltersKey + Constants.KeyDelimiter + id);
-        if (!Patch.CanConvert(quilter) || !new Patch(quilter).CircleIds.Contains(Constants.LeadCircleId))
+        if (!Patch.CanConvert(quilter) || !new Patch(quilter).CircleIds.EmptyIfNull().Contains(Constants.LeadCircleId))
         {
           return false;
         }
@@ -163,7 +163,7 @@ namespace Quilting
     public bool CreatePatch(Patch patch, string key, string quilterId)
     {
       var quilter = GetQuilter(quilterId);
-      if (quilter == null || !GetCircleIdsForPatch(key).Intersect(quilter.CircleIds).Any())
+      if (quilter == null || !GetCircleIdsForPatch(key).Intersect(quilter.CircleIds.EmptyIfNull()).Any())
       {
         return false;
       }
@@ -184,7 +184,7 @@ namespace Quilting
       var circleIds = FindPatchValue(key, (patch) => patch.CircleIds) ?? Array.Empty<string>();
 
       // Lead circle can access anything
-      return circleIds.Union(new string[]
+      return circleIds.EmptyIfNull().Union(new string[]
       {
         Constants.LeadCircleId,
       }).ToArray();
@@ -322,7 +322,7 @@ namespace Quilting
 
     private bool IsMemberOfCirclesExclusion(Patch patch, string key, string[] quilterCircleIds)
     {
-      if (quilterCircleIds.Contains(Constants.LeadCircleId))
+      if (quilterCircleIds.EmptyIfNull().Contains(Constants.LeadCircleId))
       {
         return true;
       }
@@ -337,13 +337,16 @@ namespace Quilting
       return patch.CircleIds
         .EmptyIfNull()
         .Exclusion(canonicalPatch.CircleIds.EmptyIfNull())
-        .All(quilterCircleIds.Contains);
+        .All(x => quilterCircleIds.EmptyIfNull().Contains(x));
     }
 
     private void PinPatch(Patch patch, string key, string[] quilterCircleIds)
     {
       var circleIds = GetCircleIdsForPatch(key);
-      var quilterNotInCircles = !quilterCircleIds.Intersect(circleIds.Union(patch.CircleIds.EmptyIfNull())).Any();
+      var quilterNotInCircles = !quilterCircleIds
+        .EmptyIfNull()
+        .Intersect(circleIds.EmptyIfNull().Union(patch.CircleIds.EmptyIfNull()))
+        .Any();
       if (quilterNotInCircles)
       {
         patch.SetValue(Constants.PinnedKey, quilterNotInCircles);
