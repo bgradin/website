@@ -10,14 +10,9 @@ namespace Gradinware.Data
 
         private const string _databaseDirectory = "sqlite";
 
-        private static bool _created;
-
         public SqliteDbContext()
         {
-            if (!_created)
-            {
-                Database.EnsureCreated();
-            }
+            Database.EnsureCreated();
         }
 
         protected abstract string GetDatabaseName();
@@ -34,13 +29,10 @@ namespace Gradinware.Data
                 throw new InvalidOperationException();
             }
 
-            string directory = string.Format("{0}/{1}", DatabaseRootDirectory, GetDatabaseDirectory());
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
+            string directory = Path.Combine(DatabaseRootDirectory, GetDatabaseDirectory());
+            Directory.CreateDirectory(directory);
 
-            optionBuilder.UseSqlite(string.Format(@"Data Source={0}/{1}", directory, GetDatabaseName()));
+            optionBuilder.UseSqlite($"Data Source={directory}/{GetDatabaseName()}");
         }
     }
 }

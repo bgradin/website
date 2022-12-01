@@ -1,20 +1,18 @@
-export default function template(title, state, content) {
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>${title}</title>
+    <title>/</title>
     <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
     <link rel="stylesheet" href="/assets/main.css">
   </head>
   <body>
     <div class="content">
-      <div id="app">${content}</div>
+      <div id="app"><main><h1>Hello!</h1><p>Welcome to gradinware.com!</p></main></div>
     </div>
-
+  
     <script>
-      window.__STATE__ = ${JSON.stringify(state)}
+      window.__STATE__ = {"title":"Hello!","content":"Welcome to gradinware.com!"}
     </script>
     <script src="/assets/main.js"></script>
-  </body>`;
-}
+  </body>

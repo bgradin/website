@@ -1,8 +1,8 @@
-import React, { Component } from 'react'
+import React, { Component } from "react";
 
 class App extends Component {
   render() {
-    const { title, content } = this.props
+    const { title, content } = this.props;
 
     return (
       <main>
@@ -13,4 +13,4 @@ class App extends Component {
   }
 }
 
-export default App
+export default App;
