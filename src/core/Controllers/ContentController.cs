@@ -53,5 +53,17 @@ namespace Gradinware.Controllers
         }
         : BadRequest();
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Write([FromQuery] string key, [FromQuery] string id)
+    {
+      using (var reader = new StreamReader(Request.Body))
+      {
+        var body = await reader.ReadToEndAsync();
+        var token = JToken.Parse(body);
+        return Patch.CanConvert(token) && _quilt.CreatePatch(new Patch(token), key, id)
+          ? Ok() : BadRequest();
+      }
+    }
   }
 }
