@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace Gradinware.Data
 {
-  internal sealed class SqliteBsonTrunk : KvpDbContext, ITrunk
+  internal class SqliteBsonTrunk : KvpDbContext, ITrunk
   {
     private readonly string _databaseName;
 
@@ -40,7 +40,12 @@ namespace Gradinware.Data
 
     public JToken Retrieve(string key)
     {
-      var kvp = KeyValuePairs.First(x => x.Key == key);
+      var kvp = KeyValuePairs.FirstOrDefault(x => x.Key == key);
+      if (kvp == null)
+      {
+        return null;
+      }
+
       var data = Convert.FromBase64String(kvp.Value);
       using (var stream = new MemoryStream(data))
       using (var reader = new BsonDataReader(stream))
@@ -60,9 +65,19 @@ namespace Gradinware.Data
       using (var stream = new MemoryStream())
       using (var writer = new BsonDataWriter(stream))
       {
-        var kvp = KeyValuePairs.First(x => x.Key == key);
         value.WriteTo(writer);
-        kvp.Value = Convert.ToBase64String(stream.ToArray());
+        var encodedValue = Convert.ToBase64String(stream.ToArray());
+
+        var kvp = KeyValuePairs.FirstOrDefault(x => x.Key == key);
+        if (kvp != null)
+        {
+          kvp.Value = encodedValue;
+        }
+        else
+        {
+          KeyValuePairs.Add(new KeyValuePair { Key = key, Value = encodedValue });
+        }
+
         SaveChanges();
       }
     }

@@ -1,4 +1,5 @@
 using System.IO;
+using Gradinware.Data;
 using Gradinware.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -6,46 +7,52 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Quilting;
 
 namespace Gradinware
 {
-    public class Startup
+  public class Startup
+  {
+    public Startup(IConfiguration configuration)
     {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
-
-        public IConfiguration Configuration { get; }
-
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddAuthorization();
-            services.AddControllers();
-            services.AddHttpClient<IReactSsrClient, ReactSsrClient>();
-        }
-
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-        {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseRouting();
-            app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
-
-            app.UseFileServer(new FileServerOptions
-            {
-                FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/app/ui/public")),
-            });
-
-            app.UseJsonContent();
-        }
+      Configuration = configuration;
     }
+
+    public IConfiguration Configuration
+    {
+      get;
+    }
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+      services.AddLogging();
+      services.AddScoped<IContentTrunk, ContentTrunk>();
+      services.AddAuthorization();
+      services.AddControllers();
+      services.AddHttpClient<IReactSsrClient, ReactSsrClient>();
+    }
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+      if (env.IsDevelopment())
+      {
+        app.UseDeveloperExceptionPage();
+      }
+
+      app.UseRouting();
+      app.UseAuthorization();
+
+      app.UseEndpoints(endpoints =>
+      {
+        endpoints.MapControllers();
+      });
+
+      app.UseFileServer(new FileServerOptions
+      {
+        FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/app/ui/public")),
+      });
+
+      app.UseJsonContent();
+    }
+  }
 }

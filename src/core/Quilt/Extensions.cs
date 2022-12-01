@@ -22,5 +22,17 @@ namespace Quilting
     {
       return sequence1.Except(sequence2).Union(sequence2.Except(sequence1));
     }
+
+    public static void SetValue<T1, T2>(this Dictionary<T1, T2> dict, T1 key, T2 value)
+    {
+      if (dict.ContainsKey(key))
+      {
+        dict[key] = value;
+      }
+      else
+      {
+        dict.TryAdd(key, value);
+      }
+    }
   }
 }
