@@ -38,10 +38,12 @@ namespace Quilting
     {
       JsonUtility.VerifyType(token, JTokenType.Object);
 
+      _trunk.BeginTransaction();
+
       if (_trunk.GetKeys().Count() > 0)
       {
         var quilter = _trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + id);
-        if (!Patch.CanConvert(quilter) || !new Patch(quilter).CircleIds.EmptyIfNull().Contains(Constants.LeadCircleId))
+        if (!Patch.TryConvert(quilter)?.CircleIds.EmptyIfNull().Contains(Constants.LeadCircleId) ?? false)
         {
           return false;
         }
@@ -49,82 +51,86 @@ namespace Quilting
         _trunk.Clear();
       }
 
-      _trunk.Stow(Constants.QuiltersKey + _trunk.Delimiter + id, new JObject
+      if (!_trunk.Stow(Constants.QuiltersKey + _trunk.Delimiter + id, new JObject
       {
         [Patch.CircleIdsKey] = JArray.FromObject(new[] { Constants.LeadCircleId }),
-      });
-      _trunk.Stow(Constants.CirclesKey + _trunk.Delimiter + Constants.LeadCircleId, new JObject
+      }))
+      {
+        return false;
+      }
+      if (!_trunk.Stow(Constants.CirclesKey + _trunk.Delimiter + Constants.LeadCircleId, new JObject
       {
         [Circle.CircleIdsKey] = JArray.FromObject(new[] { Constants.LeadCircleId }),
         [Circle.NameKey] = JValue.FromObject(Constants.LeadCircleName),
-      });
+      }))
+      {
+        return false;
+      }
 
-      var circlesRoot = token.SelectToken(Constants.CirclesKey);
+      var circlesRoot = token[Constants.CirclesKey];
       if (circlesRoot != null)
       {
         JsonUtility.VerifyType(circlesRoot, JTokenType.Object);
         foreach (var circleToken in (circlesRoot as JObject))
         {
-          if (Patch.CanConvert(circleToken.Value))
+          if (!Patch.CanConvert(circleToken.Value) || !CreateCircle(new Circle(circleToken.Value), circleToken.Key, id))
           {
-            CreateCircle(new Circle(circleToken.Value), circleToken.Key, id);
+            return false;
           }
         }
       }
 
-      var quiltersRoot = token.SelectToken(Constants.QuiltersKey);
+      var quiltersRoot = token[Constants.QuiltersKey];
       if (quiltersRoot != null)
       {
         JsonUtility.VerifyType(quiltersRoot, JTokenType.Object);
         foreach (var quilterToken in (quiltersRoot as JObject))
         {
-          if (Patch.CanConvert(quilterToken.Value))
+          var quilterPatch = Patch.TryConvert(quilterToken.Value);
+          if (quilterPatch == null || !CreateQuilter(new Patch(quilterToken.Value), quilterToken.Key, id))
           {
-            CreateQuilter(new Patch(quilterToken.Value), quilterToken.Key, id);
+            return false;
           }
         }
       }
 
-      var contentRoot = token.SelectToken(Constants.ContentKey);
-      if (Patch.CanConvert(contentRoot))
+      var contentPatch = Patch.TryConvert(token[Constants.ContentKey]);
+      if (contentPatch != null)
       {
         // Forward declare to allow recursion
-        Action<Patch, string> storeReferences = null;
+        Func<Patch, string, bool> storeReferences = null;
 
         storeReferences = (patch, patchKey) =>
         {
-          var referenceToken = patch.GetValueOrDefault(Constants.PatchReferenceKey);
+          var referenceToken = patch[Constants.PatchReferenceKey];
           if (referenceToken != null && referenceToken.Type == JTokenType.String)
           {
             var reference = referenceToken.Value<string>();
             if (!string.IsNullOrEmpty(reference) && !_trunk.GetKeys().Contains(reference))
             {
-              JToken newToken = token;
-              foreach (var segment in reference.Split(_trunk.Delimiter))
+              var newPatch = Patch.TryConvert(token.SelectToken(reference));
+              if (newPatch != null)
               {
-                var selectedToken = newToken[segment];
-                if (selectedToken == null)
+                if (!_trunk.Stow(reference, newPatch)
+                  || !_trunk.Stow(patchKey, patch)
+                  || !VisitPatches(newPatch, reference, storeReferences))
                 {
-                  newToken = new JObject();
-                  break;
+                  return false;
                 }
-
-                newToken = selectedToken;
-              }
-
-              if (Patch.CanConvert(newToken))
-              {
-                _trunk.Stow(reference, newToken);
-                _trunk.Stow(patchKey, patch.ToJson());
-                VisitPatches(new Patch(newToken), reference, storeReferences);
               }
             }
           }
+
+          return true;
         };
 
-        VisitPatches(new Patch(contentRoot), Constants.ContentKey, storeReferences);
+        if (!VisitPatches(contentPatch, Constants.ContentKey, storeReferences))
+        {
+          return false;
+        }
       }
 
+      _trunk.CommitTransaction();
       return true;
     }
 
@@ -147,15 +153,11 @@ namespace Quilting
         return null;
       }
 
-      var token = _trunk.Retrieve(key);
-      if (!Patch.CanConvert(token))
+      var patch = Patch.TryConvert(_trunk.Retrieve(key));
+      if (patch != null && !SewPatch(patch, key, quilter))
       {
         return null;
       }
-
-      var patch = new Patch(token);
-
-      SewPatch(patch, key, quilter);
 
       return patch;
     }
@@ -163,19 +165,19 @@ namespace Quilting
     public bool CreatePatch(Patch patch, string key, string quilterId)
     {
       var quilter = GetQuilter(quilterId);
-      if (quilter == null || !GetCircleIdsForPatch(key).Intersect(quilter.CircleIds.EmptyIfNull()).Any())
+      if (quilter == null
+        || !GetCircleIdsForPatch(key).Intersect(quilter.CircleIds.EmptyIfNull()).Any()
+        || !IsMemberOfCirclesExclusion(patch, key, quilter.CircleIds)
+        || !ExtricatePatch(patch, key))
       {
         return false;
       }
 
-      if (!IsMemberOfCirclesExclusion(patch, key, quilter.CircleIds))
+      if (!_trunk.Stow(key, patch))
       {
         return false;
       }
 
-      ExtricatePatch(patch, key);
-
-      _trunk.Stow(key, patch.ToJson());
       return true;
     }
 
@@ -202,13 +204,7 @@ namespace Quilting
 
     private Patch GetQuilter(string quilterId)
     {
-      var token = _trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + quilterId);
-      if (!Patch.CanConvert(token))
-      {
-        return null;
-      }
-
-      return new Patch(token);
+      return Patch.TryConvert(_trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + quilterId));
     }
 
     private T FindPatchValue<T>(string key, Func<Patch, T> selector)
@@ -218,98 +214,117 @@ namespace Quilting
         return default(T);
       }
 
-      var token = _trunk.Retrieve(key);
-      if (!Patch.CanConvert(token))
+      var patch = Patch.TryConvert(_trunk.Retrieve(key));
+      if (patch == null)
       {
         return default(T);
       }
 
-      var patch = new Patch(token);
       var value = selector(patch);
-
       var segments = key.Split(_trunk.Delimiter);
       return value != null
         ? value
         : FindPatchValue(string.Join(_trunk.Delimiter, segments.Take(segments.Length - 1)), selector);
     }
 
-    private void VisitPatches(Patch patch, string patchKey, Action<Patch, string> visit)
+    private bool VisitPatches(Patch patch, string patchKey, Func<Patch, string, bool> visit)
     {
-      visit(patch, patchKey);
+      if (!visit(patch, patchKey))
+      {
+        return false;
+      }
 
-      var keys = patch.Keys.ToArray();
+      var keys = patch.GetKeys();
       for (int i = 0; i < keys.Length; i++)
       {
         var token = patch[keys[i]];
-        if (Patch.CanConvert(token))
+        var childPatch = Patch.TryConvert(patch[keys[i]]);
+        if (childPatch != null)
         {
-          VisitPatches(new Patch(token), patchKey + _trunk.Delimiter + keys[i], visit);
+          if (!VisitPatches(childPatch, patchKey + _trunk.Delimiter + keys[i], visit))
+          {
+            return false;
+          }
         }
         else if (token.Type == JTokenType.Array)
         {
           var arr = token as JArray;
           for (int j = 0; j < arr.Count; j++)
           {
-            if (Patch.CanConvert(arr[j]))
+            if (arr[j].Type == JTokenType.Object)
             {
-              VisitPatches(new Patch(arr[j]), patchKey + $"[{j}]", visit);
+              var arrPatch = Patch.TryConvert(arr[j]);
+              if (arrPatch == null || !VisitPatches(new Patch(arr[j]), patchKey + $"[{j}]", visit))
+              {
+                return false;
+              }
             }
           }
         }
       }
+
+      return true;
     }
 
-    private void SewPatch(Patch root, string rootKey, Patch quilter)
+    private bool SewPatch(Patch root, string rootKey, Patch quilter)
     {
       // Forward declare to allow recursion
-      Action<Patch, string> stitch = null;
+      Func<Patch, string, bool> stitch = null;
 
       stitch = (patch, patchKey) =>
       {
-        var token = patch.GetValueOrDefault(Constants.PatchReferenceKey);
+        var token = patch[Constants.PatchReferenceKey];
         if (token != null && token.Type == JTokenType.String)
         {
           var reference = token.Value<string>();
           if (!string.IsNullOrEmpty(reference) && !root.ContainsKey(reference))
           {
-            var referenceToken = _trunk.Retrieve(reference);
-            if (Patch.CanConvert(referenceToken))
+            var referencePatch = Patch.TryConvert(_trunk.Retrieve(reference));
+            if (referencePatch != null)
             {
-              var referencePatch = new Patch(referenceToken);
               PinPatch(referencePatch, reference, quilter.CircleIds);
-              root.Add(reference, referencePatch.ToJson());
-              VisitPatches(referencePatch, reference, stitch);
+              root.Add(reference, referencePatch);
+              if (!VisitPatches(referencePatch, reference, stitch))
+              {
+                return false;
+              }
             }
           }
         }
+
+        return true;
       };
 
       PinPatch(root, rootKey, quilter.CircleIds);
-      VisitPatches(root, rootKey, stitch);
+      return VisitPatches(root, rootKey, stitch);
     }
 
-    private void ExtricatePatch(Patch root, string rootKey)
+    private bool ExtricatePatch(Patch root, string rootKey)
     {
       // Forward declare to allow recursion
-      Action<Patch, string> removeReferences = null;
+      Func<Patch, string, bool> removeReferences = null;
 
       removeReferences = (patch, patchKey) =>
       {
-        var token = patch.GetValueOrDefault(Constants.PatchReferenceKey);
+        var token = patch[Constants.PatchReferenceKey];
         if (token != null && token.Type == JTokenType.String)
         {
           var reference = token.Value<string>();
           if (!string.IsNullOrEmpty(reference) && root.ContainsKey(reference))
           {
-            var referenceToken = root.GetValueOrDefault(reference);
-            if (Patch.CanConvert(referenceToken))
+            var referencePatch = Patch.TryConvert(root[reference]);
+            if (referencePatch != null)
             {
-              var referencePatch = new Patch(referenceToken);
               root.Remove(reference);
-              VisitPatches(referencePatch, reference, removeReferences);
+              if (!VisitPatches(referencePatch, reference, removeReferences))
+              {
+                return false;
+              }
             }
           }
         }
+
+        return true;
       };
 
       if (root.ContainsKey(Constants.PinnedKey))
@@ -317,7 +332,7 @@ namespace Quilting
         root.Remove(Constants.PinnedKey);
       }
 
-      VisitPatches(root, rootKey, removeReferences);
+      return VisitPatches(root, rootKey, removeReferences);
     }
 
     private bool IsMemberOfCirclesExclusion(Patch patch, string key, string[] quilterCircleIds)
@@ -327,16 +342,15 @@ namespace Quilting
         return true;
       }
 
-      var token = _trunk.Retrieve(key);
-      if (!Patch.CanConvert(token))
+      var canonicalPatch = Patch.TryConvert(_trunk.Retrieve(key));
+      if (canonicalPatch != null)
       {
         return false;
       }
 
-      var canonicalPatch = new Patch(token);
       return patch.CircleIds
         .EmptyIfNull()
-        .Exclusion(canonicalPatch.CircleIds.EmptyIfNull())
+        .ExclusiveUnion(canonicalPatch.CircleIds.EmptyIfNull())
         .All(x => quilterCircleIds.EmptyIfNull().Contains(x));
     }
 
@@ -349,7 +363,7 @@ namespace Quilting
         .Any();
       if (quilterNotInCircles)
       {
-        patch.SetValue(Constants.PinnedKey, quilterNotInCircles);
+        patch[Constants.PinnedKey] = quilterNotInCircles;
       }
       else if (patch.ContainsKey(Constants.PinnedKey))
       {
@@ -360,7 +374,7 @@ namespace Quilting
     private IEnumerable<Circle> LoadCircles()
     {
       var map = GetMap(Constants.CirclesKey);
-      foreach (var key in map.Keys)
+      foreach (var key in map.GetKeys())
       {
         yield return new Circle(_trunk.Retrieve(Constants.CirclesKey + _trunk.Delimiter + key));
       }
@@ -369,7 +383,7 @@ namespace Quilting
     private IEnumerable<Patch> LoadQuilters()
     {
       var map = GetMap(Constants.QuiltersKey);
-      foreach (var key in map.Keys)
+      foreach (var key in map.GetKeys())
       {
         yield return new Patch(_trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + key));
       }

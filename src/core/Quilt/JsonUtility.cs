@@ -89,7 +89,7 @@ namespace Quilting
     public static T Load<T>(JToken token, string key, JTokenType type)
     {
       VerifyType(token, JTokenType.Object);
-      return Load<T>(token.SelectToken(key), type);
+      return Load<T>(token[key], type);
     }
 
     public static T Load<T>(JToken token, JTokenType type)
@@ -101,7 +101,7 @@ namespace Quilting
     public static T[] LoadArray<T>(JToken token, string key, JTokenType type)
     {
       VerifyType(token, JTokenType.Object);
-      return LoadArray<T>(token.SelectToken(key), type);
+      return LoadArray<T>(token[key], type);
     }
 
     public static T[] LoadArray<T>(JToken token, JTokenType type)

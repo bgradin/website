@@ -33,11 +33,18 @@ namespace Gradinware.Controllers
       {
         var body = await reader.ReadToEndAsync();
         var token = JToken.Parse(body);
-        return new HttpResponseMessage(
-          _quilt.Create(token, "brian")
-            ? HttpStatusCode.OK
-            : HttpStatusCode.Unauthorized
-        );
+        try
+        {
+          return new HttpResponseMessage(
+            _quilt.Create(token, "brian")
+              ? HttpStatusCode.OK
+              : HttpStatusCode.Unauthorized
+          );
+        }
+        catch (System.Exception e)
+        {
+          return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        }
       }
     }
 
@@ -48,7 +55,7 @@ namespace Gradinware.Controllers
       return patch != null
         ? new ContentResult
         {
-          Content = patch.ToJson().ToString(Formatting.None),
+          Content = patch.ToString(Formatting.None),
           ContentType = "application/json"
         }
         : BadRequest();
@@ -58,14 +65,12 @@ namespace Gradinware.Controllers
     [Route("map")]
     public IActionResult Map([FromQuery] string key, [FromQuery] string id)
     {
-      var patch = _quilt.GetPatch(key, id);
-      return patch != null
-        ? new ContentResult
-        {
-          Content = patch.ToJson().ToString(Formatting.None),
-          ContentType = "application/json"
-        }
-        : BadRequest();
+      var map = _quilt.GetMap(key);
+      return new ContentResult
+      {
+        Content = map.ToString(Formatting.None),
+        ContentType = "application/json"
+      };
     }
 
     [HttpPost]
@@ -74,8 +79,8 @@ namespace Gradinware.Controllers
       using (var reader = new StreamReader(Request.Body))
       {
         var body = await reader.ReadToEndAsync();
-        var token = JToken.Parse(body);
-        return Patch.CanConvert(token) && _quilt.CreatePatch(new Patch(token), key, id)
+        var patch = Patch.TryConvert(JToken.Parse(body));
+        return patch != null && _quilt.CreatePatch(patch, key, id)
           ? Ok() : BadRequest();
       }
     }

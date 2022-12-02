@@ -10,10 +10,13 @@ namespace Quilting
       get;
     }
 
+    void BeginTransaction();
+    void CommitTransaction();
+
     void Clear();
     IEnumerable<string> GetKeys();
     IEnumerable<string> GetKeys(string prefix);
     JToken Retrieve(string key);
-    void Stow(string key, JToken value);
+    bool Stow(string key, JToken value);
   }
 }

@@ -1,10 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace Quilting
 {
-  public class Patch : Dictionary<string, JToken>, IJsonConvertible
+  public class Patch : JObject
   {
     public const string CircleIdsKey = Constants.QuiltPropertyPrefix + "circleIds";
 
@@ -37,15 +35,9 @@ namespace Quilting
       return token != null && token.Type == JTokenType.Object;
     }
 
-    public virtual JToken ToJson()
+    public static Patch TryConvert(JToken token)
     {
-      return JToken.FromObject(
-        new Dictionary<string, JToken>(
-          this.Select(
-            kvp => new KeyValuePair<string, JToken>(kvp.Key, kvp.Value)
-          )
-        )
-      );
+      return CanConvert(token) ? new Patch(token) : null;
     }
   }
 }

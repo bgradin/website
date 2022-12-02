@@ -4,17 +4,8 @@ using Newtonsoft.Json.Linq;
 
 namespace Quilting
 {
-  public class Map : Dictionary<string, Map>, IJsonConvertible
+  public class Map : JObject
   {
-    public JToken ToJson()
-    {
-      return Keys.Aggregate(new JObject(), (obj, key) =>
-      {
-        obj[key] = this[key].ToJson();
-        return obj;
-      });
-    }
-
     public void Insert(IEnumerable<string> path)
     {
       var segment = path.FirstOrDefault();
@@ -25,7 +16,7 @@ namespace Quilting
           this[segment] = new Map();
         }
 
-        this[segment].Insert(path.Skip(1));
+        (this[segment] as Map).Insert(path.Skip(1));
       }
     }
   }

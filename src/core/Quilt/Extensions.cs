@@ -7,32 +7,20 @@ namespace Quilting
 {
   public static class Extensions
   {
-    public static bool ContainsKey(this JToken token, string key)
-    {
-      return token.SelectToken(key) != null;
-    }
-
     public static IEnumerable<T> EmptyIfNull<T>(this IEnumerable<T> enumerable)
     {
       return enumerable ?? Array.Empty<T>();
     }
 
     // Sequence XOR
-    public static IEnumerable<T> Exclusion<T>(this IEnumerable<T> sequence1, IEnumerable<T> sequence2)
+    public static IEnumerable<T> ExclusiveUnion<T>(this IEnumerable<T> source, IEnumerable<T> other)
     {
-      return sequence1.Except(sequence2).Union(sequence2.Except(sequence1));
+      return source.Union(other).Except(source.Intersect(other));
     }
 
-    public static void SetValue<T1, T2>(this Dictionary<T1, T2> dict, T1 key, T2 value)
+    public static string[] GetKeys(this JObject source)
     {
-      if (dict.ContainsKey(key))
-      {
-        dict[key] = value;
-      }
-      else
-      {
-        dict.TryAdd(key, value);
-      }
+      return (source as IEnumerable<KeyValuePair<string, JToken>>).Select(x => x.Key).ToArray();
     }
   }
 }

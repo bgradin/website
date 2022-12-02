@@ -10,9 +10,7 @@ namespace Quilting
     {
       get
       {
-        return ContainsKey(NameKey)
-          ? JsonUtility.LoadString(NameKey)
-          : null;
+        return JsonUtility.LoadString(this[NameKey]);
       }
     }
 

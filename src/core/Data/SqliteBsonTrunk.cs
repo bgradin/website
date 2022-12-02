@@ -30,6 +30,16 @@ namespace Gradinware.Data
       return _databaseName;
     }
 
+    public void BeginTransaction()
+    {
+      Database.BeginTransaction();
+    }
+
+    public void CommitTransaction()
+    {
+      Database.CommitTransaction();
+    }
+
     public void Clear()
     {
       KeyValuePairs.RemoveRange(KeyValuePairs);
@@ -85,8 +95,21 @@ namespace Gradinware.Data
       return Deserialize(kvp.Value);
     }
 
-    public void Stow(string key, JToken value)
+    public bool Stow(string key, JToken value)
     {
+      // Detect collisions. Terminate stow operation if this happens
+      // rather than attempting to implement complicated merge logic
+      foreach (var relativeKey in KeyValuePairs
+        .Select(x => x.Key)
+        .Where(x => x != key && x.StartsWith(key))
+        .Select(x => x.Substring(key.Length + Delimiter.Length)))
+      {
+        if (value.SelectToken(relativeKey) != null)
+        {
+          return false;
+        }
+      }
+
       using (var stream = new MemoryStream())
       using (var writer = new BsonDataWriter(stream))
       {
@@ -102,9 +125,10 @@ namespace Gradinware.Data
         {
           KeyValuePairs.Add(new KeyValuePair { Key = key, Value = encodedValue });
         }
-
-        SaveChanges();
       }
+
+      SaveChanges();
+      return true;
     }
 
     private JToken Deserialize(string value)
