@@ -18,3 +18,12 @@ Run `make` to start a dev server at [localhost:5000](http://localhost:5000). `ma
 ## Deployment
 
 All builds trigger Travis CI, but tags will additionally deploy the site code to my VPS.
+
+## TODO
+
+- Fix GetPatch + CreatePatch
+- Improve account API
+- Update content controller to use tokens instead of IDs
+- Improve content import/create endpoint
+- Partial inheritance?
+- Create site editor
