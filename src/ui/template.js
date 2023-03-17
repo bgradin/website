@@ -1,20 +1,10 @@
-export default function template(title, state, content) {
-  return `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>${title}</title>
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.css">
-    <link rel="stylesheet" href="/assets/main.css">
-  </head>
-  <body>
-    <div class="content">
-      <div id="app">${content}</div>
-    </div>
+export default function template(patch, content) {
+  const closingTag = content.indexOf("</head>");
+  if (closingTag === -1) {
+    return content;
+  }
 
-    <script>
-      window.__STATE__ = ${JSON.stringify(state)}
-    </script>
-    <script src="/assets/main.js"></script>
-  </body>`;
+  return `${content.slice(0, closingTag)}<script>
+    window.__patch = ${JSON.stringify(patch)}
+  </script>${content.slice(closingTag)}`;
 }

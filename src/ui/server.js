@@ -1,13 +1,13 @@
 import express from "express";
 import React from "react";
 import { renderToString } from "react-dom/server";
-import App from "./components/app";
+import App from "./app";
 import template from "./template";
 
-function render(state) {
-  let content = renderToString(<App {...state} />);
+function render(patch) {
+  let content = renderToString(<App patch={patch} />);
 
-  return { content, state };
+  return { content, patch };
 }
 
 const app = express();
@@ -17,7 +17,7 @@ app.listen(3000);
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  const { state, content } = render(req.body);
-  const response = template(req.url, state, content);
+  const { patch, content } = render(req.body);
+  const response = template(patch, content);
   res.send(response);
 });

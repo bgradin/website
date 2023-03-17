@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using Gradinware.Data;
 using Gradinware.Services;
@@ -7,20 +8,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Quilting;
 
 namespace Gradinware
 {
   public class Startup
   {
-    public Startup(IConfiguration configuration)
+    public static IConfiguration Configuration
     {
-      Configuration = configuration;
-    }
-
-    public IConfiguration Configuration
-    {
-      get;
+      get; private set;
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -34,6 +29,13 @@ namespace Gradinware
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
+      var builder = new ConfigurationBuilder()
+        .SetBasePath(env.ContentRootPath)
+        .AddJsonFile("appsettings.json", false, true)
+        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json")
+        .AddEnvironmentVariables();
+      Configuration = builder.Build();
+
       if (env.IsDevelopment())
       {
         app.UseDeveloperExceptionPage();

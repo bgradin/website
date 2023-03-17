@@ -1,0 +1,75 @@
+{
+  "q:quilters": {
+    "admin": {
+      "q:circleIds": ["lead"]
+    }
+  },
+  "q:circles": {
+    "authors": {
+      "q:name": "Authors"
+    },
+    "lead": {
+      "q:name": "Lead"
+    }
+  },
+  "q:content": {
+    "index": {
+      "q:ref": "templates.content-page",
+      "page:title": "Gradinware.com",
+      "page:content": "Hello, world!"
+    },
+    "templates": {
+      "content-page": {
+        "ui:type": "page",
+        "head": {
+          "q:ref": "page:head"
+        },
+        "body": {
+          "q:ref": "page:body"
+        },
+        "page:head": [
+          {
+            "ui:type": "meta",
+            "charset": "utf-8"
+          },
+          {
+            "ui:type": "title",
+            "text": {
+              "q:ref": "page:title"
+            }
+          },
+          {
+            "q:ref": "page:styles"
+          }
+        ],
+        "page:styles": [
+          {
+            "ui:type": "link",
+            "rel": "stylesheet",
+            "href": "https://cdn.simplecss.org/simple.css"
+          },
+          {
+            "ui:type": "link",
+            "rel": "stylesheet",
+            "href": "/assets/main.css"
+          }
+        ],
+        "page:body": [
+          {
+            "ui:type": "reactRoot",
+            "children": "page:content"
+          },
+          {
+            "q:ref": "page:scripts"
+          }
+        ],
+        "page:scripts": [
+          {
+            "ui:type": "script",
+            "src": "/assets/main.js"
+          }
+        ]
+      }
+    }
+  }
+}

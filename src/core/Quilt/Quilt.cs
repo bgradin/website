@@ -164,11 +164,7 @@ namespace Quilting
 
     public bool CreatePatch(Patch patch, string key, string quilterId)
     {
-      var quilter = GetQuilter(quilterId);
-      if (quilter == null
-        || !GetCircleIdsForPatch(key).Intersect(quilter.CircleIds.EmptyIfNull()).Any()
-        || !IsMemberOfCirclesExclusion(patch, key, quilter.CircleIds)
-        || !ExtricatePatch(patch, key))
+      if (!CanQuilterCreatePatch(patch, key, quilterId) || !ExtricatePatch(patch, key))
       {
         return false;
       }
@@ -279,7 +275,7 @@ namespace Quilting
           var reference = token.Value<string>();
           if (!string.IsNullOrEmpty(reference) && !root.ContainsKey(reference))
           {
-            var referencePatch = Patch.TryConvert(_trunk.Retrieve(reference));
+            var referencePatch = ResolvePatch(reference);
             if (referencePatch != null)
             {
               PinPatch(referencePatch, reference, quilter.CircleIds);
@@ -335,23 +331,51 @@ namespace Quilting
       return VisitPatches(root, rootKey, removeReferences);
     }
 
-    private bool IsMemberOfCirclesExclusion(Patch patch, string key, string[] quilterCircleIds)
+    private Patch ResolvePatch(string reference)
     {
-      if (quilterCircleIds.EmptyIfNull().Contains(Constants.LeadCircleId))
+      var referencePatch = Patch.TryConvert(_trunk.Retrieve(reference));
+      if (referencePatch == null && !reference.StartsWith(Constants.ContentKey))
       {
-        return true;
+        referencePatch = Patch.TryConvert(_trunk.Retrieve(Constants.ContentKey + _trunk.Delimiter + reference));
       }
 
-      var canonicalPatch = Patch.TryConvert(_trunk.Retrieve(key));
-      if (canonicalPatch != null)
+      return referencePatch;
+    }
+
+    private bool CanQuilterCreatePatch(Patch patch, string key, string quilterId)
+    {
+      // If user is invalid
+      var quilter = GetQuilter(quilterId);
+      if (quilter == null)
       {
         return false;
       }
 
+      // If user is admin
+      var quilterCircleIds = quilter.CircleIds.EmptyIfNull();
+      if (quilterCircleIds.Contains(Constants.LeadCircleId))
+      {
+        return true;
+      }
+
+      // If patch doesn't exist or has no access restrictions
+      var canonicalPatch = Patch.TryConvert(_trunk.Retrieve(key));
+      if (canonicalPatch == null)
+      {
+        return true;
+      }
+
+      // If patch exists and user has no circle IDs in common with it
+      if (!GetCircleIdsForPatch(key).Intersect(quilterCircleIds).Any())
+      {
+        return false;
+      }
+
+      // Quilter must have access to any added/removed circle IDs
       return patch.CircleIds
         .EmptyIfNull()
         .ExclusiveUnion(canonicalPatch.CircleIds.EmptyIfNull())
-        .All(x => quilterCircleIds.EmptyIfNull().Contains(x));
+        .All(x => quilterCircleIds.Contains(x));
     }
 
     private void PinPatch(Patch patch, string key, string[] quilterCircleIds)

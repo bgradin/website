@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Gradinware.Services
 {
@@ -18,11 +19,11 @@ namespace Gradinware.Services
       _client.DefaultRequestHeaders.Clear();
     }
 
-    public async Task<string> Render(string json)
+    public async Task<string> Render(JToken json)
     {
       var request = new HttpRequestMessage(HttpMethod.Get, "/");
-      request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-      
+      request.Content = new StringContent(json.ToString(), Encoding.UTF8, "application/json");
+
       using (var response = await _client.SendAsync(request))
       {
         try

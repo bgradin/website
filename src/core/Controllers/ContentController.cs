@@ -36,7 +36,7 @@ namespace Gradinware.Controllers
         try
         {
           return new HttpResponseMessage(
-            _quilt.Create(token, "brian")
+            _quilt.Create(token, Startup.Configuration?["AdminUsername"])
               ? HttpStatusCode.OK
               : HttpStatusCode.Unauthorized
           );

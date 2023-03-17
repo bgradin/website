@@ -1,8 +1,8 @@
 import React from "react";
 import { hydrate } from "react-dom";
-import App from "./components/app";
+import App from "./app";
 
-const state = window.__STATE__;
-delete window.__STATE__;
+const patch = window.__patch;
+delete window.__patch;
 
-hydrate(<App {...state} />, document.querySelector("#app"));
+hydrate(<App patch={patch} isClient />, document.querySelector("#app"));
