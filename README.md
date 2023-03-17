@@ -21,7 +21,6 @@ All builds trigger Travis CI, but tags will additionally deploy the site code to
 
 ## TODO
 
-- Fix GetPatch + CreatePatch
 - Improve account API
 - Update content controller to use tokens instead of IDs
 - Improve content import/create endpoint
