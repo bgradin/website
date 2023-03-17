@@ -9,7 +9,7 @@ stop: ## Stop dev server
 	docker stop $(CONTAINER) >/dev/null 2>&1 || true
 
 start: create ## Start dev server
-	docker inspect $(CONTAINER) >/dev/null 2>&1 || docker run -dit -p 5000:5000 -p 3000:3000 -v $(shell pwd)/data:/data --name $(CONTAINER) $(IMAGE)
+	docker inspect $(CONTAINER) >/dev/null 2>&1 || docker run -dit -p 5000:5000 -p 3000:3000 -p 9229:9229 -v $(shell pwd)/data:/data --name $(CONTAINER) $(IMAGE)
 	docker start $(CONTAINER) >/dev/null 2>&1 || true
 
 destroy: stop ## Destroy dev environment

@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Attach",
+      "name": "Attach (.NET Core)",
       "type": "coreclr",
       "request": "attach",
       "pipeTransport": {
@@ -15,6 +15,14 @@
       "sourceFileMap": {
         "/app": "${workspaceFolder}/src/core"
       }
+    },
+    {
+      "name": "Attach (Node.js)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "localRoot": "${workspaceFolder}/src",
+      "remoteRoot": "/app"
     }
   ]
 }

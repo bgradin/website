@@ -24,6 +24,7 @@ COPY src/ui/ /app/ui/
 
 EXPOSE 3000
 EXPOSE 5000
+EXPOSE 9229
 
 RUN chmod +x /app/entrypoint.sh
 ENTRYPOINT /app/entrypoint.sh
