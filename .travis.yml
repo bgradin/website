@@ -18,6 +18,7 @@ jobs:
           docker build --no-cache=true -t gradinware-server . &&
           docker login www.gradinware.com --username '${REGISTRY_USERNAME}' --password '${REGISTRY_PASSWORD}' &&
           docker tag gradinware-server www.gradinware.com/gradinware/server:${TRAVIS_TAG} &&
+          docker tag gradinware-server www.gradinware.com/gradinware/server:latest &&
           docker push www.gradinware.com/gradinware/server
         on:
           tags: true
