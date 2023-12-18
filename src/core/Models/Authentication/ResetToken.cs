@@ -1,19 +1,24 @@
-using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace Gradinware.Models.Authentication
 {
-  [Table("UserEvents")]
-  public class UserEvent
+  [Table("ResetTokens")]
+  public class ResetToken
   {
+    public ResetToken()
+    {
+    }
+
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
     public int UserId { get; set; }
 
-    public UserEventCode Code { get; set; }
+    public string Token { get; set; }
 
-    public DateTime Timestamp { get; set; }
+    public bool Used { get; set; }
+
+    [ForeignKey("UserId")]
+    public virtual User User { get; set; }
   }
 }

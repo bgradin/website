@@ -1,49 +1,44 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace Gradinware.Models.Authentication
 {
-    internal class User
-    {
-        [Required]
-        [JsonPropertyName("id")]
-        public int Id { get; set; }
+  [Table("Users")]
+  public class User
+  {
+    [Required]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public int Id { get; set; }
 
-        [Required]
-        [MinLength(2)]
-        [MaxLength(35)]
-        [JsonPropertyName("firstName")]
-        public string FirstName { get; set; }
+    [Required]
+    [MinLength(2)]
+    [MaxLength(35)]
+    public string FirstName { get; set; }
 
-        [Required]
-        [MinLength(2)]
-        [MaxLength(35)]
-        [JsonPropertyName("lastName")]
-        public string LastName { get; set; }
+    [Required]
+    [MinLength(2)]
+    [MaxLength(35)]
+    public string LastName { get; set; }
 
-        [Required]
-        [MinLength(3)]
-        [MaxLength(320)]
-        [JsonPropertyName("email")]
-        public string Email { get; set; }
+    [Required]
+    [MinLength(3)]
+    [MaxLength(320)]
+    public string Email { get; set; }
 
-        [Required]
-        [MinLength(8)]
-        [JsonIgnore]
-        public string Password { get; set; }
+    [Required]
+    [MinLength(8)]
+    public string Password { get; set; }
 
-        [JsonPropertyName("authToken")]
-        public string AuthToken { get; set; }
+    [Required]
+    public DateTime DateCreated { get; set; }
 
-        [JsonPropertyName("passwordResetToken")]
-        public string PasswordResetToken { get; set; }
+    public DateTime DateLastLogin { get; set; }
 
-        [Required]
-        [JsonIgnore]
-        public DateTime DateCreated { get; set; }
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; }
 
-        [JsonIgnore]
-        public string DateLastLogin { get; set; }
-    }
+    public virtual ICollection<ResetToken> ResetTokens { get; set; }
+  }
 }

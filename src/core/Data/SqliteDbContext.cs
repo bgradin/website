@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gradinware.Data
 {
-  internal abstract class SqliteDbContext : DbContext
+  public abstract class SqliteDbContext : DbContext
   {
     protected const string DatabaseRootDirectory = "/data";
 

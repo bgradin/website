@@ -3,21 +3,36 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gradinware.Data
 {
-    internal class AccountContext : SqliteDbContext
+  public class AccountContext : SqliteDbContext
+  {
+    public AccountContext()
     {
-
-        public DbSet<User> Users { get; set; }
-        public DbSet<UserEvent> UserEvents { get; set; }
-
-        protected override string GetDatabaseName()
-        {
-            return "accounts.db";
-        }
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<User>().ToTable("Users");
-            modelBuilder.Entity<UserEvent>().ToTable("UserEvents");
-        }
+      Database.Migrate();
     }
+
+    private const string _databaseName = "accounts.db";
+
+    public DbSet<User> Users { get; set; }
+    public DbSet<UserEvent> UserEvents { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<ResetToken> ResetTokens { get; set; }
+
+    protected override string GetDatabaseName()
+    {
+        return _databaseName;
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.RefreshTokens);
+
+        modelBuilder.Entity<ResetToken>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.ResetTokens);
+    }
+  }
 }

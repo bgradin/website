@@ -4,7 +4,7 @@ using Quilting.Exceptions;
 
 namespace Quilting
 {
-  internal static class JsonUtility
+  public static class JsonUtility
   {
     public static string LoadString(JToken token, string key)
     {

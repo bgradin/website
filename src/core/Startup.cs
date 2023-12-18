@@ -25,6 +25,7 @@ namespace Gradinware
       services.AddAuthorization();
       services.AddControllers();
       services.AddHttpClient<IReactSsrClient, ReactSsrClient>();
+      services.AddDbContext<AccountContext>();
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)

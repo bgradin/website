@@ -16,19 +16,20 @@ namespace Gradinware
 
     private readonly RequestDelegate _next;
     private readonly IReactSsrClient _ssrClient;
-    private readonly IContentTrunk _trunk;
-    private readonly Quilt _quilt;
+    private IContentTrunk _trunk;
+    private Quilt _quilt;
 
-    public JsonContentMiddleware(RequestDelegate next, IReactSsrClient ssrClient, IContentTrunk trunk)
+    public JsonContentMiddleware(RequestDelegate next, IReactSsrClient ssrClient)
     {
       _next = next;
       _ssrClient = ssrClient;
-      _trunk = trunk;
-      _quilt = new Quilt(trunk);
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, IContentTrunk trunk)
     {
+      _trunk = trunk;
+      _quilt = new Quilt(trunk);
+
       // Render request path if possible
       if (await RenderJsonContent(context))
       {
