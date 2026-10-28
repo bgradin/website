@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 COPY src/core/Gradinware.csproj .
 RUN dotnet restore
@@ -6,7 +6,7 @@ COPY src/core/ ./
 RUN dotnet build -c Debug
 RUN dotnet publish -c Debug -o /publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 ENV ASPNETCORE_URLS=http://*:5000
 ENV ASPNETCORE_ENVIRONMENT="production"
