@@ -1,7 +1,7 @@
 {
-  "name": "app-cards",
+  "name": "website",
   "version": "1.1.0",
-  "description": "Server-side Rendering React from Scratch!",
+  "description": "Gradin portfolio website",
   "main": "index.js",
   "scripts": {
     "clean": "docker stop test-server-instance && docker rm test-server-instance && docker rmi test-server",
@@ -9,7 +9,7 @@
     "build": "docker build -t test-server .",
     "start": "docker run -p 5000:5000 --name test-server-instance test-server"
   },
-  "author": "Rohit kumar",
+  "author": "Brian Gradin",
   "license": "MIT",
   "dependencies": {
     "@babel/core": "^7.20.2",
