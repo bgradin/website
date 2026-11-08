@@ -4,6 +4,7 @@ using Gradinware.Data;
 using Gradinware.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -56,11 +57,15 @@ namespace Gradinware
         endpoints.MapControllers();
       });
 
+      var contentTypeProvider = new FileExtensionContentTypeProvider();
+      contentTypeProvider.Mappings[".apk"] = "application/vnd.android.package-archive";
+
       app.UseFileServer(new FileServerOptions
       {
         FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/app/ui/public")),
         StaticFileOptions =
         {
+          ContentTypeProvider = contentTypeProvider,
           ServeUnknownFileTypes = true,
           DefaultContentType = "application/octet-stream",
         },
