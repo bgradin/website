@@ -100,7 +100,6 @@ public sealed class Catalog
 {
     public List<Release> Releases { get; set; }
     public int RecommendedVersionCode { get; set; }
-    public Dictionary<string, List<DeviceRule>> SupportedDevices { get; set; }
 }
 public sealed class Release
 {
@@ -111,6 +110,7 @@ public sealed class Release
     public string ApplicationId { get; set; }
     public int MinSdk { get; set; }
     public Download Download { get; set; }
+    public List<Device> SupportedDevices { get; set; }
 }
 public sealed class Download
 {
@@ -119,7 +119,7 @@ public sealed class Download
     public string Sha256 { get; set; }
 }
 [System.Text.Json.Serialization.JsonUnmappedMemberHandling(System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow)]
-public sealed class DeviceRule
+public sealed class Device
 {
     public string Manufacturer { get; set; }
     public string Model { get; set; }
