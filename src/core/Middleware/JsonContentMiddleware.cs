@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Gradinware.Data;
 using Gradinware.Services;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Quilting;
 
@@ -12,12 +13,8 @@ namespace Gradinware
 {
   public sealed class JsonContentMiddleware
   {
-    private static readonly string DATA_DIRECTORY = "/data";
-
     private readonly RequestDelegate _next;
     private readonly IReactSsrClient _ssrClient;
-    private IContentTrunk _trunk;
-    private Quilt _quilt;
 
     public JsonContentMiddleware(RequestDelegate next, IReactSsrClient ssrClient)
     {
@@ -25,13 +22,20 @@ namespace Gradinware
       _ssrClient = ssrClient;
     }
 
-    public async Task InvokeAsync(HttpContext context, IContentTrunk trunk)
+    public async Task InvokeAsync(HttpContext context)
     {
-      _trunk = trunk;
-      _quilt = new Quilt(trunk);
+      // API responses, including unknown routes, must not depend on Quilt storage.
+      if (context.Request.Path.StartsWithSegments("/api"))
+      {
+        await _next(context);
+        return;
+      }
+
+      var trunk = context.RequestServices.GetRequiredService<IContentTrunk>();
+      var quilt = new Quilt(trunk);
 
       // Render request path if possible
-      if (await RenderJsonContent(context))
+      if (await RenderJsonContent(context, trunk, quilt))
       {
         return;
       }
@@ -42,11 +46,11 @@ namespace Gradinware
       if (context.Response.StatusCode == 404)
       {
         // Fallback to 404
-        await RenderJsonContent("/404", context);
+        await RenderJsonContent("/404", context, trunk, quilt);
       }
     }
 
-    private async Task<bool> RenderJsonContent(HttpContext context)
+    private async Task<bool> RenderJsonContent(HttpContext context, IContentTrunk trunk, Quilt quilt)
     {
       if (!context.Request.Path.HasValue)
       {
@@ -60,7 +64,7 @@ namespace Gradinware
       {
         return await RenderJsonContent(
             Path.Combine(Path.GetDirectoryName(requestPath), filename),
-            context
+            context, trunk, quilt
         );
       }
       // Handle directory indices
@@ -68,14 +72,14 @@ namespace Gradinware
       {
         return await RenderJsonContent(
             Path.Combine(requestPath, "index").Substring(1),
-            context
+            context, trunk, quilt
         );
       }
 
       return false;
     }
 
-    private async Task<bool> RenderJsonContent(string key, HttpContext context)
+    private async Task<bool> RenderJsonContent(string key, HttpContext context, IContentTrunk trunk, Quilt quilt)
     {
       try
       {
@@ -86,7 +90,7 @@ namespace Gradinware
         }
         else
         {
-          JToken data = GetJsonData(key);
+          JToken data = quilt.GetPatch(Quilting.Constants.ContentKey + trunk.Delimiter + key, Startup.Configuration?["AdminUsername"]);
           if (data == null)
           {
             return false;
@@ -111,11 +115,6 @@ namespace Gradinware
       var page = await _ssrClient.Render(data);
       await HtmlCache.Store(key, page);
       return page;
-    }
-
-    private JToken GetJsonData(string key)
-    {
-      return _quilt.GetPatch(Quilting.Constants.ContentKey + _trunk.Delimiter + key, Startup.Configuration?["AdminUsername"]);
     }
 
     private static async Task ReportServerError(HttpContext context, Exception ex)

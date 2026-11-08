@@ -23,6 +23,7 @@ namespace Gradinware.Data
     public SqliteBsonTrunk(string databaseName)
     {
       _databaseName = databaseName;
+      Database.EnsureCreated();
     }
 
     protected override string GetDatabaseName()

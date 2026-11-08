@@ -36,10 +36,11 @@ CustomFrameController Controller(string query = "", string key = null)
 int Status(IActionResult result) => result is ObjectResult obj ? obj.StatusCode ?? 200 : result is StatusCodeResult status ? status.StatusCode : 200;
 Release Release(int code) => new() { AppVersion = "display " + code, AppVersionCode = code,
     ApplicationId = "com.bgradin.customframe", MinSdk = 25, PublishedAt = DateTimeOffset.UtcNow,
+    SupportedDevices = new() { new() { Manufacturer = "tested", Model = "hardware " + code, MinSdk = 25 } },
     ReleaseNotes = "", Download = new() { Url = "https://example.com/" + code + ".apk", SizeBytes = 123, Sha256 = new string('a', 64) } };
 try
 {
-    var catalog = new Catalog { Releases = new(), SupportedDevices = new() };
+    var catalog = new Catalog { Releases = new() };
     Write(catalogPath, catalog);
     Write(secretsPath, new Secrets { ApprovedKeys = new() { "approved" }, Sources = new() });
     Check(((ContentResult)Controller().Releases()).Content == "{\"releases\":[],\"nextCursor\":null}", "empty history");
@@ -49,11 +50,13 @@ try
     Check(Status(await Controller(key: "approved").Config()) == 503, "no recommended release");
     catalog.Releases.AddRange(new[] { Release(1), Release(2), Release(3) });
     catalog.RecommendedVersionCode = 3;
-    catalog.SupportedDevices["3"] = new() { new() { Manufacturer = "tested", Model = "hardware", MinSdk = 25 } };
     Write(catalogPath, catalog);
     var first = Controller("?limit=2");
     using var page = JsonDocument.Parse(((ContentResult)first.Releases()).Content);
     Check(page.RootElement.GetProperty("releases")[0].GetProperty("appVersionCode").GetInt32() == 3, "descending order");
+    Check(page.RootElement.GetProperty("releases")[0].GetProperty("supportedDevices")[0].GetProperty("model").GetString() == "hardware 3"
+        && page.RootElement.GetProperty("releases")[1].GetProperty("supportedDevices")[0].GetProperty("model").GetString() == "hardware 2",
+        "supported devices belong to each release");
     var cursor = page.RootElement.GetProperty("nextCursor").GetString();
     using var second = JsonDocument.Parse(((ContentResult)Controller("?cursor=" + Uri.EscapeDataString(cursor)).Releases()).Content);
     Check(second.RootElement.GetProperty("releases").GetArrayLength() == 1, "continuation");
@@ -63,7 +66,12 @@ try
     Check(Status(await Controller().Config()) == 401, "missing key");
     Check(Status(await Controller(key: "wrong").Config()) == 401, "invalid key");
     var valid = Controller(key: "approved");
-    Check(await valid.Config() is JsonResult && valid.Response.Headers.CacheControl == "no-store", "authenticated uncached config");
+    var validConfig = await valid.Config();
+    Check(validConfig is JsonResult && valid.Response.Headers.CacheControl == "no-store", "authenticated uncached config");
+    using var config = JsonDocument.Parse(JsonSerializer.Serialize(((JsonResult)validConfig).Value, options));
+    Check(!config.RootElement.TryGetProperty("supportedDevices", out _)
+        && !config.RootElement.GetProperty("v1").TryGetProperty("supportedDevices", out _),
+        "config excludes supported devices");
     var source = new Source { Name = "Dropbox", AppKey = "app", AppSecret = "secret", RefreshToken = "refresh" };
     Write(secretsPath, new Secrets { ApprovedKeys = new() { "approved" }, Sources = new() { ["dropbox"] = source } });
     Check(Status(await Controller(key: "wrong").Config()) == 401 && handler.Calls == 0, "unauthorized never refreshes");
