@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      # Keep the existing Node version for compatibility with node-sass 7.
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '17'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build frontend
+        run: make frontend
+
+      - name: Build Docker image
+        run: docker build --no-cache -t gradinware-server .
+
+      - name: Publish tagged release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          printf '%s' "$REGISTRY_PASSWORD" | docker login www.gradinware.com --username "$REGISTRY_USERNAME" --password-stdin
+          docker tag gradinware-server "www.gradinware.com/gradinware/server:$RELEASE_TAG"
+          docker tag gradinware-server www.gradinware.com/gradinware/server:latest
+          docker push "www.gradinware.com/gradinware/server:$RELEASE_TAG"
+          docker push www.gradinware.com/gradinware/server:latest

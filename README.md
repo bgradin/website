@@ -1,6 +1,6 @@
 # gradinware.com
 
-[![Build Status](https://travis-ci.com/bgradin/website.svg?branch=master)](https://travis-ci.com/bgradin/website)
+[![CI](https://github.com/bgradin/website/actions/workflows/ci.yml/badge.svg)](https://github.com/bgradin/website/actions/workflows/ci.yml)
 
 Public portfolio + personal website for the Gradins
 
@@ -17,7 +17,12 @@ Run `make` to start a dev server at [localhost:5000](http://localhost:5000). `ma
 
 ## Deployment
 
-All builds trigger Travis CI, but tags will additionally deploy the site code to my VPS.
+GitHub Actions builds the frontend and Docker image on pushes and pull requests.
+Pushing a tag also publishes the Docker image to `www.gradinware.com/gradinware/server`
+with both the tag name and `latest`.
+
+Configure the `REGISTRY_USERNAME` and `REGISTRY_PASSWORD` repository secrets in
+GitHub under **Settings → Secrets and variables → Actions** to enable publishing.
 
 ## TODO
 
