@@ -59,6 +59,11 @@ namespace Gradinware
       app.UseFileServer(new FileServerOptions
       {
         FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "/app/ui/public")),
+        StaticFileOptions =
+        {
+          ServeUnknownFileTypes = true,
+          DefaultContentType = "application/octet-stream",
+        },
       });
 
       app.UseJsonContent();
