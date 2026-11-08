@@ -48,6 +48,9 @@ public sealed class FrameCatalog
                 || release.ApplicationId != "com.bgradin.customframe" || release.MinSdk <= 0
                 || release.PublishedAt == default || release.PublishedAt.Offset != TimeSpan.Zero
                 || release.ReleaseNotes == null || release.Download == null
+                || release.SupportedDevices == null || release.SupportedDevices.Any(
+                  x => x.Manufacturer == null || x.Model == null || x.MinSdk == null
+                )
                 || !Uri.TryCreate(release.Download.Url, UriKind.Absolute, out var url)
                 || url.Scheme != "https" || !string.IsNullOrEmpty(url.UserInfo)
                 || release.Download.SizeBytes <= 0 || release.Download.Sha256 == null
@@ -62,17 +65,8 @@ public sealed class FrameCatalog
     public async Task<object> GetConfigAsync(Catalog catalog, Secrets secrets, CancellationToken cancellationToken)
     {
         var release = catalog.Releases.SingleOrDefault(r => r.AppVersionCode == catalog.RecommendedVersionCode);
-        if (release == null || catalog.SupportedDevices == null
-            || !catalog.SupportedDevices.ContainsKey(release.AppVersionCode.ToString(System.Globalization.CultureInfo.InvariantCulture))
+        if (release == null
             || secrets.Sources == null) throw new InvalidDataException();
-        foreach (var entry in catalog.SupportedDevices)
-        {
-            if (!int.TryParse(entry.Key, out var code) || code <= 0
-                || code.ToString(System.Globalization.CultureInfo.InvariantCulture) != entry.Key
-                || !catalog.Releases.Any(r => r.AppVersionCode == code) || entry.Value == null
-                || entry.Value.Any(r => r == null || string.IsNullOrWhiteSpace(r.Manufacturer)
-                    || string.IsNullOrWhiteSpace(r.Model) || r.MinSdk <= 0)) throw new InvalidDataException();
-        }
         foreach (var source in secrets.Sources)
             if (source.Key != "dropbox" || source.Value == null || string.IsNullOrWhiteSpace(source.Value.Name)
                 || string.IsNullOrWhiteSpace(source.Value.AppKey)
@@ -81,8 +75,7 @@ public sealed class FrameCatalog
         var sources = new Dictionary<string, object>();
         foreach (var source in secrets.Sources)
             sources[source.Key] = new { source.Value.Name, accessToken = await tokens.GetAsync(source.Value, cancellationToken) };
-        return new { v1 = new { release.AppVersion, release.AppVersionCode,
-            catalog.SupportedDevices, sources } };
+        return new { v1 = new { release.AppVersion, release.AppVersionCode, sources } };
     }
 
     public static bool IsAuthorized(string key, Secrets secrets)
