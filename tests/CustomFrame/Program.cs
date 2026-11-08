@@ -31,7 +31,8 @@ CustomFrameController Controller(string query = "", string key = null)
     var context = new DefaultHttpContext();
     context.Request.QueryString = new QueryString(query);
     if (key != null) context.Request.Headers["AuthKey"] = key;
-    return new CustomFrameController(store) { ControllerContext = new ControllerContext { HttpContext = context } };
+    return new CustomFrameController(store, Microsoft.Extensions.Logging.Abstractions.NullLogger<CustomFrameController>.Instance)
+        { ControllerContext = new ControllerContext { HttpContext = context } };
 }
 int Status(IActionResult result) => result is ObjectResult obj ? obj.StatusCode ?? 200 : result is StatusCodeResult status ? status.StatusCode : 200;
 Release Release(int code) => new() { AppVersion = "display " + code, AppVersionCode = code,

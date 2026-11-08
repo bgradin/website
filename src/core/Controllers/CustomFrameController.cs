@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Gradinware.CustomFrame;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Gradinware.Controllers;
 
@@ -14,7 +15,12 @@ namespace Gradinware.Controllers;
 public sealed class CustomFrameController : ControllerBase
 {
     private readonly FrameCatalog store;
-    public CustomFrameController(FrameCatalog store) { this.store = store; }
+    private readonly ILogger<CustomFrameController> logger;
+    public CustomFrameController(FrameCatalog store, ILogger<CustomFrameController> logger)
+    {
+        this.store = store;
+        this.logger = logger;
+    }
     private ObjectResult Error(int status, string code, string message) =>
         StatusCode(status, new { error = new { code, message } });
 
@@ -49,7 +55,12 @@ public sealed class CustomFrameController : ControllerBase
                 return StatusCode(304);
             return Content(Encoding.UTF8.GetString(bytes), "application/json");
         }
-        catch (Exception ex) when (Unavailable(ex)) { return UnavailableResult(); }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to retrieve custom frame releases.");
+            if (Unavailable(ex)) return UnavailableResult();
+            throw;
+        }
     }
 
     [HttpGet("v1/config")]
@@ -64,7 +75,12 @@ public sealed class CustomFrameController : ControllerBase
             if (!FrameCatalog.IsAuthorized(keys[0], secrets)) return UnauthorizedResult();
             return new JsonResult(await store.GetConfigAsync(store.ReadCatalog(), secrets, HttpContext.RequestAborted));
         }
-        catch (Exception ex) when (Unavailable(ex)) { return UnavailableResult(); }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to retrieve custom frame configuration.");
+            if (Unavailable(ex)) return UnavailableResult();
+            throw;
+        }
     }
 
     [Route("{**path}")]
@@ -84,7 +100,7 @@ public sealed class CustomFrameController : ControllerBase
         || ex is System.IO.InvalidDataException
         || ex is UnauthorizedAccessException || ex is JsonException || ex is ArgumentException;
     private static string Cursor(int code) => Convert.ToBase64String(Encoding.UTF8.GetBytes("v1:" + code.ToString(CultureInfo.InvariantCulture)));
-    private static bool TryCursor(string cursor, out int code)
+    private bool TryCursor(string cursor, out int code)
     {
         code = 0;
         try
@@ -94,6 +110,10 @@ public sealed class CustomFrameController : ControllerBase
                 && int.TryParse(value.Substring(3), NumberStyles.None, CultureInfo.InvariantCulture, out code)
                 && code > 0 && Cursor(code) == cursor;
         }
-        catch (FormatException) { return false; }
+        catch (FormatException ex)
+        {
+            logger.LogWarning(ex, "Failed to decode custom frame release cursor.");
+            return false;
+        }
     }
 }
