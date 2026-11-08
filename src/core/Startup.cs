@@ -21,6 +21,12 @@ namespace Gradinware
     public void ConfigureServices(IServiceCollection services)
     {
       services.AddLogging();
+      services.AddSingleton<Gradinware.CustomFrame.FrameCatalog>();
+      services.AddSingleton(TimeProvider.System);
+      services.AddSingleton<Gradinware.CustomFrame.DropboxTokenProvider>();
+      services.AddHttpClient("CustomFrameDropbox")
+        .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler { AllowAutoRedirect = false })
+        .RemoveAllLoggers();
       services.AddScoped<IContentTrunk, ContentTrunk>();
       services.AddAuthorization();
       services.AddControllers();
