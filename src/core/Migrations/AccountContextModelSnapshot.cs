@@ -14,7 +14,7 @@ namespace Gradinware.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "5.0.6");
+                .HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("Gradinware.Models.Authentication.RefreshToken", b =>
                 {
@@ -44,7 +44,11 @@ namespace Gradinware.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Token")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("Used")

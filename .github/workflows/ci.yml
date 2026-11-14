@@ -2,8 +2,8 @@ name: CI
 
 on:
   push:
-    branches: ['**']
-    tags: ['*']
+    branches: ["**"]
+    tags: ["*"]
   pull_request:
   workflow_dispatch:
 
@@ -21,14 +21,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '17'
+          node-version: "24.22.1"
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --non-interactive
 
       - name: Build frontend
-        run: make frontend
+        run: test -n "$PRODUCTION_JWT_KEY" && export OAuth__JwtKey="$PRODUCTION_JWT_KEY" && make frontend
 
       - name: Build Docker image
         run: docker build --no-cache -t gradinware-server .

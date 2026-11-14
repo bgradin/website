@@ -12,11 +12,14 @@ namespace Quilting
 
     void BeginTransaction();
     void CommitTransaction();
+    void RollbackTransaction();
 
-    void Clear();
-    IEnumerable<string> GetKeys();
-    IEnumerable<string> GetKeys(string prefix);
-    JToken Retrieve(string key);
-    bool Stow(string key, JToken value);
+    void Clear(string id);
+    IEnumerable<string> GetKeys(string id);
+    IEnumerable<string> GetKeys(string prefix, string id);
+    JToken Get(string key, string id);
+    bool Put(string key, JToken value, string id);
+    bool Delete(string key, string id);
+    bool CanPut(string key, string id);
   }
 }

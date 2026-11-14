@@ -4,7 +4,7 @@ function ReactRoot(props) {
   const { children } = props;
 
   return (
-    <div class="content">
+    <div className="content">
       <div id="app">{children}</div>
     </div>
   );

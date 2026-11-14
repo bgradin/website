@@ -1,3 +1,5 @@
+using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Gradinware.Models.Authentication
@@ -14,7 +16,10 @@ namespace Gradinware.Models.Authentication
 
     public int UserId { get; set; }
 
+    [Required]
     public string Token { get; set; }
+
+    public DateTime ExpiresAt { get; set; }
 
     public bool Used { get; set; }
 

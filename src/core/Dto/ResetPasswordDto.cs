@@ -10,6 +10,7 @@ namespace Gradinware.Dto
     public string Token { get; set; }
 
     [Required]
+    [MinLength(8)]
     [JsonPropertyName("password")]
     public string Password { get; set; }
   }

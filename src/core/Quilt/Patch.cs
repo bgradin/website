@@ -5,6 +5,7 @@ namespace Quilting
   public class Patch : JObject
   {
     public const string CircleIdsKey = Constants.QuiltPropertyPrefix + "circleIds";
+    public const string AccessKey = Constants.QuiltPropertyPrefix + "access";
 
     public string[] CircleIds
     {
@@ -18,6 +19,12 @@ namespace Quilting
       {
         this[CircleIdsKey] = JArray.FromObject(value);
       }
+    }
+
+    public JObject Access
+    {
+      get { return this[AccessKey] as JObject; }
+      set { this[AccessKey] = value; }
     }
 
     public Patch(JToken token)

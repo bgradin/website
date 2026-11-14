@@ -5,6 +5,6 @@ namespace Gradinware.Services
 {
   public interface IReactSsrClient
   {
-    Task<string> Render(JToken json);
+  Task<string> Render(JToken json);
   }
 }

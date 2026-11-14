@@ -5,11 +5,6 @@ namespace Gradinware.Data
 {
   public class AccountContext : SqliteDbContext
   {
-    public AccountContext()
-    {
-      Database.Migrate();
-    }
-
     private const string _databaseName = "accounts.db";
 
     public DbSet<User> Users { get; set; }

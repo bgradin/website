@@ -1,0 +1,9 @@
+.git
+.travis.yml
+data
+node_modules
+src/core/bin
+src/core/obj
+src/ui/public/assets
+*.db
+*.sqlite

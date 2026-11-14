@@ -8,7 +8,7 @@ namespace Gradinware.Models.Authentication
   {
     public RefreshToken()
     {
-      IssuedAt = DateTime.Now;
+      IssuedAt = DateTime.UtcNow;
     }
 
     public RefreshToken(OAuthPasswordGrant grant)

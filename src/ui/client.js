@@ -1,8 +1,13 @@
 import React from "react";
-import { hydrate } from "react-dom";
+import { hydrateRoot } from "react-dom/client";
 import App from "./app";
 
 const patch = window.__patch;
 delete window.__patch;
 
-hydrate(<App patch={patch} isClient />, document.querySelector("#app"));
+const root = document.querySelector("#app");
+if (patch && root) {
+  hydrateRoot(root, <App patch={patch} isClient />);
+} else {
+  console.error("Unable to hydrate: page state or app root is missing.");
+}

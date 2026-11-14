@@ -68,7 +68,7 @@ namespace Gradinware.Models.Authentication
           { "expiresIn", expiresIn },
           { "scope", scope },
         },
-        Encoding.ASCII.GetBytes(Startup.Configuration["OAuth:JwtKey"]),
+        Encoding.UTF8.GetBytes(Startup.Configuration["OAuth:JwtKey"]),
         JwsAlgorithm.HS256
       );
     }

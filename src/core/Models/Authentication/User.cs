@@ -37,8 +37,8 @@ namespace Gradinware.Models.Authentication
 
     public DateTime DateLastLogin { get; set; }
 
-    public virtual ICollection<RefreshToken> RefreshTokens { get; set; }
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
-    public virtual ICollection<ResetToken> ResetTokens { get; set; }
+    public virtual ICollection<ResetToken> ResetTokens { get; set; } = new List<ResetToken>();
   }
 }

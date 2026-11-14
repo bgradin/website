@@ -14,14 +14,14 @@ namespace Gradinware.Services
     public ReactSsrClient(HttpClient client)
     {
       _client = client;
-      _client.BaseAddress = new Uri("http://localhost:3000");
+      _client.BaseAddress = new Uri("http://127.0.0.1:3000");
       _client.Timeout = new TimeSpan(0, 0, 5);
       _client.DefaultRequestHeaders.Clear();
     }
 
     public async Task<string> Render(JToken json)
     {
-      var request = new HttpRequestMessage(HttpMethod.Get, "/");
+      var request = new HttpRequestMessage(HttpMethod.Post, "/");
       request.Content = new StringContent(json.ToString(), Encoding.UTF8, "application/json");
 
       using (var response = await _client.SendAsync(request))

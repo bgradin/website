@@ -13,7 +13,7 @@ namespace Gradinware
     {
       try
       {
-        string decoded = JWT.Decode(token, Encoding.ASCII.GetBytes(Startup.Configuration["OAuth:JwtKey"]));
+        string decoded = JWT.Decode(token, Encoding.UTF8.GetBytes(Startup.Configuration["OAuth:JwtKey"]));
         return JsonConvert.DeserializeObject<Dictionary<string, object>>(decoded);
       }
       catch

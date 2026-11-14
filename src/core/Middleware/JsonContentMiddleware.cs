@@ -90,7 +90,7 @@ namespace Gradinware
         }
         else
         {
-          JToken data = quilt.GetPatch(Quilting.Constants.ContentKey + trunk.Delimiter + key, Startup.Configuration?["AdminUsername"]);
+          JToken data = GetJsonData(key, trunk, quilt);
           if (data == null)
           {
             return false;
@@ -115,6 +115,11 @@ namespace Gradinware
       var page = await _ssrClient.Render(data);
       await HtmlCache.Store(key, page);
       return page;
+    }
+
+    private JToken GetJsonData(string key, IContentTrunk trunk, Quilt quilt)
+    {
+      return quilt.GetPatch(Quilting.Constants.ContentKey + trunk.Delimiter + key, Startup.Configuration?["AdminUsername"]);
     }
 
     private static async Task ReportServerError(HttpContext context, Exception ex)

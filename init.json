@@ -14,7 +14,7 @@
   },
   "q:content": {
     "index": {
-      "q:ref": "templates.content-page",
+      "q:motif": "templates.content-page",
       "page:title": "Gradinware.com",
       "page:content": "Hello, world!"
     },
@@ -22,10 +22,10 @@
       "content-page": {
         "ui:type": "page",
         "head": {
-          "q:ref": "page:head"
+          "q:motif": "page:head"
         },
         "body": {
-          "q:ref": "page:body"
+          "q:motif": "page:body"
         },
         "page:head": [
           {
@@ -35,11 +35,11 @@
           {
             "ui:type": "title",
             "text": {
-              "q:ref": "page:title"
+              "q:motif": "page:title"
             }
           },
           {
-            "q:ref": "page:styles"
+            "q:motif": "page:styles"
           }
         ],
         "page:styles": [
@@ -60,7 +60,7 @@
             "children": "page:content"
           },
           {
-            "q:ref": "page:scripts"
+            "q:motif": "page:scripts"
           }
         ],
         "page:scripts": [

@@ -7,62 +7,69 @@ namespace Quilting
 {
   public class Quilt
   {
+    private const int MaxMotifDepth = 32;
     readonly ITrunk _trunk;
-    readonly Lazy<IEnumerable<Circle>> _circles;
-    readonly Lazy<IEnumerable<Patch>> _quilters;
-
-    public IEnumerable<Circle> Circles
-    {
-      get
-      {
-        return _circles.Value;
-      }
-    }
-
-    public IEnumerable<Patch> Quilters
-    {
-      get
-      {
-        return _quilters.Value;
-      }
-    }
+    int _transactionDepth;
 
     public Quilt(ITrunk trunk)
     {
       _trunk = trunk;
-      _circles = new Lazy<IEnumerable<Circle>>(() => this.LoadCircles());
-      _quilters = new Lazy<IEnumerable<Patch>>(() => this.LoadQuilters());
     }
 
     public bool Create(JToken token, string id)
     {
       JsonUtility.VerifyType(token, JTokenType.Object);
-
+      if (!KeyRules.IsValidSegment(id, _trunk.Delimiter)) return false;
       _trunk.BeginTransaction();
-
-      if (_trunk.GetKeys().Count() > 0)
+      _transactionDepth++;
+      try
       {
-        var quilter = _trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + id);
+        var created = CreateInTransaction(token, id);
+        if (created) _trunk.CommitTransaction();
+        else _trunk.RollbackTransaction();
+        return created;
+      }
+      catch (UnauthorizedAccessException)
+      {
+        _trunk.RollbackTransaction();
+        return false;
+      }
+      catch
+      {
+        _trunk.RollbackTransaction();
+        throw;
+      }
+      finally
+      {
+        _transactionDepth--;
+      }
+    }
+
+    private bool CreateInTransaction(JToken token, string id)
+    {
+      if (_trunk.GetKeys(id).Count() > 0)
+      {
+        var quilter = _trunk.Get(Constants.QuiltersKey + _trunk.Delimiter + id, id);
         if (!Patch.TryConvert(quilter)?.CircleIds.EmptyIfNull().Contains(Constants.LeadCircleId) ?? false)
         {
           return false;
         }
 
-        _trunk.Clear();
+        _trunk.Clear(id);
       }
 
-      if (!_trunk.Stow(Constants.QuiltersKey + _trunk.Delimiter + id, new JObject
+      if (!_trunk.Put(Constants.QuiltersKey + _trunk.Delimiter + id, new JObject
       {
         [Patch.CircleIdsKey] = JArray.FromObject(new[] { Constants.LeadCircleId }),
-      }))
+      }, id))
       {
         return false;
       }
-      if (!_trunk.Stow(Constants.CirclesKey + _trunk.Delimiter + Constants.LeadCircleId, new JObject
+      if (!_trunk.Put(Constants.CirclesKey + _trunk.Delimiter + Constants.LeadCircleId, new JObject
       {
         [Circle.CircleIdsKey] = JArray.FromObject(new[] { Constants.LeadCircleId }),
         [Circle.NameKey] = JValue.FromObject(Constants.LeadCircleName),
-      }))
+      }, id))
       {
         return false;
       }
@@ -102,17 +109,17 @@ namespace Quilting
 
         storeReferences = (patch, patchKey) =>
         {
-          var referenceToken = patch[Constants.PatchReferenceKey];
-          if (referenceToken != null && referenceToken.Type == JTokenType.String)
+          var motifToken = patch[Constants.MotifKey];
+          if (motifToken != null && motifToken.Type == JTokenType.String)
           {
-            var reference = referenceToken.Value<string>();
-            if (!string.IsNullOrEmpty(reference) && !_trunk.GetKeys().Contains(reference))
+            var reference = motifToken.Value<string>();
+            if (!string.IsNullOrEmpty(reference) && !_trunk.GetKeys(id).Contains(reference))
             {
               var newPatch = Patch.TryConvert(token.SelectToken(reference));
               if (newPatch != null)
               {
-                if (!_trunk.Stow(reference, newPatch)
-                  || !_trunk.Stow(patchKey, patch)
+                if (!_trunk.Put(reference, newPatch, id)
+                  || !_trunk.Put(patchKey, patch, id)
                   || !VisitPatches(newPatch, reference, storeReferences))
                 {
                   return false;
@@ -130,13 +137,18 @@ namespace Quilting
         }
       }
 
-      _trunk.CommitTransaction();
       return true;
     }
 
-    public Map GetMap(string prefix)
+    public Map GetMap(string prefix, string quilterId)
     {
-      var keys = _trunk.GetKeys(prefix);
+      if (prefix != string.Empty && !KeyRules.IsValidPath(prefix, _trunk.Delimiter)) return new Map();
+      var keys = _trunk.GetKeys(prefix, quilterId);
+      return BuildMap(keys);
+    }
+
+    private Map BuildMap(IEnumerable<string> keys)
+    {
       var map = new Map();
       foreach (var segments in keys.Select(x => x.Split(_trunk.Delimiter)))
       {
@@ -147,14 +159,10 @@ namespace Quilting
 
     public Patch GetPatch(string key, string quilterId)
     {
-      var quilter = GetQuilter(quilterId);
-      if (quilter == null)
-      {
-        return null;
-      }
-
-      var patch = Patch.TryConvert(_trunk.Retrieve(key));
-      if (patch != null && !SewPatch(patch, key, quilter))
+      if (!KeyRules.IsValidPath(key, _trunk.Delimiter)) return null;
+      var patch = Patch.TryConvert(_trunk.Get(key, quilterId));
+      if (patch == null) return null;
+      if (!SewPatch(patch, key, quilterId))
       {
         return null;
       }
@@ -164,63 +172,54 @@ namespace Quilting
 
     public bool CreatePatch(Patch patch, string key, string quilterId)
     {
-      if (!CanQuilterCreatePatch(patch, key, quilterId) || !ExtricatePatch(patch, key))
+      if (patch == null || !KeyRules.IsValidPath(key, _trunk.Delimiter)) return false;
+      if (_transactionDepth > 0) return WritePatch(patch, key, quilterId);
+      _trunk.BeginTransaction();
+      _transactionDepth++;
+      try
       {
-        return false;
-      }
+        if (!WritePatch(patch, key, quilterId))
+        {
+          _trunk.RollbackTransaction();
+          return false;
+        }
 
-      if (!_trunk.Stow(key, patch))
+        _trunk.CommitTransaction();
+        return true;
+      }
+      catch
       {
-        return false;
+        _trunk.RollbackTransaction();
+        throw;
       }
-
-      return true;
+      finally
+      {
+        _transactionDepth--;
+      }
     }
 
-    public string[] GetCircleIdsForPatch(string key)
+    public bool DeletePatch(string key, string quilterId)
     {
-      var circleIds = FindPatchValue(key, (patch) => patch.CircleIds) ?? Array.Empty<string>();
+      if (!KeyRules.IsValidPath(key, _trunk.Delimiter)) return false;
+      return _trunk.Delete(key, quilterId);
+    }
 
-      // Lead circle can access anything
-      return circleIds.EmptyIfNull().Union(new string[]
-      {
-        Constants.LeadCircleId,
-      }).ToArray();
+    private bool WritePatch(Patch patch, string key, string quilterId)
+    {
+      return ExtricatePatch(patch, key)
+        && _trunk.Put(key, patch, quilterId);
     }
 
     public bool CreateCircle(Circle circle, string circleId, string quilterId)
     {
+      if (!KeyRules.IsValidSegment(circleId, _trunk.Delimiter)) return false;
       return CreatePatch(circle, Constants.CirclesKey + _trunk.Delimiter + circleId, quilterId);
     }
 
     public bool CreateQuilter(Patch newQuilter, string newQuilterId, string quilterId)
     {
+      if (!KeyRules.IsValidSegment(newQuilterId, _trunk.Delimiter)) return false;
       return CreatePatch(newQuilter, Constants.QuiltersKey + _trunk.Delimiter + newQuilterId, quilterId);
-    }
-
-    private Patch GetQuilter(string quilterId)
-    {
-      return Patch.TryConvert(_trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + quilterId));
-    }
-
-    private T FindPatchValue<T>(string key, Func<Patch, T> selector)
-    {
-      if (string.IsNullOrEmpty(key))
-      {
-        return default(T);
-      }
-
-      var patch = Patch.TryConvert(_trunk.Retrieve(key));
-      if (patch == null)
-      {
-        return default(T);
-      }
-
-      var value = selector(patch);
-      var segments = key.Split(_trunk.Delimiter);
-      return value != null
-        ? value
-        : FindPatchValue(string.Join(_trunk.Delimiter, segments.Take(segments.Length - 1)), selector);
     }
 
     private bool VisitPatches(Patch patch, string patchKey, Func<Patch, string, bool> visit)
@@ -262,36 +261,43 @@ namespace Quilting
       return true;
     }
 
-    private bool SewPatch(Patch root, string rootKey, Patch quilter)
+    private bool SewPatch(Patch root, string rootKey, string quilterId)
     {
+      var activeKeys = new HashSet<string> { rootKey };
       // Forward declare to allow recursion
       Func<Patch, string, bool> stitch = null;
 
       stitch = (patch, patchKey) =>
       {
-        var token = patch[Constants.PatchReferenceKey];
-        if (token != null && token.Type == JTokenType.String)
+        var addedCurrent = activeKeys.Add(patchKey);
+        try
         {
-          var reference = token.Value<string>();
-          if (!string.IsNullOrEmpty(reference) && !root.ContainsKey(reference))
+          var token = patch[Constants.MotifKey];
+          if (token != null && token.Type == JTokenType.String)
           {
-            var referencePatch = ResolvePatch(reference);
-            if (referencePatch != null)
+            var reference = token.Value<string>();
+            if (!string.IsNullOrEmpty(reference) && !root.ContainsKey(reference))
             {
-              PinPatch(referencePatch, reference, quilter.CircleIds);
-              root.Add(reference, referencePatch);
-              if (!VisitPatches(referencePatch, reference, stitch))
+              var resolvedKey = ResolvePatchKey(reference, patchKey, quilterId);
+              var referencePatch = resolvedKey == null ? null : Patch.TryConvert(_trunk.Get(resolvedKey, quilterId));
+              if (referencePatch != null)
               {
-                return false;
+                if (activeKeys.Contains(resolvedKey) || activeKeys.Count >= MaxMotifDepth + 1) return false;
+                activeKeys.Add(resolvedKey);
+                root.Add(reference, referencePatch);
+                if (!VisitPatches(referencePatch, resolvedKey, stitch)) return false;
+                activeKeys.Remove(resolvedKey);
               }
             }
           }
+          return true;
         }
-
-        return true;
+        finally
+        {
+          if (addedCurrent) activeKeys.Remove(patchKey);
+        }
       };
 
-      PinPatch(root, rootKey, quilter.CircleIds);
       return VisitPatches(root, rootKey, stitch);
     }
 
@@ -302,7 +308,8 @@ namespace Quilting
 
       removeReferences = (patch, patchKey) =>
       {
-        var token = patch[Constants.PatchReferenceKey];
+        patch.Remove(Constants.PinnedKey);
+        var token = patch[Constants.MotifKey];
         if (token != null && token.Type == JTokenType.String)
         {
           var reference = token.Value<string>();
@@ -331,85 +338,41 @@ namespace Quilting
       return VisitPatches(root, rootKey, removeReferences);
     }
 
-    private Patch ResolvePatch(string reference)
+    private string ResolvePatchKey(string reference, string fromPatchKey, string quilterId)
     {
-      var referencePatch = Patch.TryConvert(_trunk.Retrieve(reference));
-      if (referencePatch == null && !reference.StartsWith(Constants.ContentKey))
-      {
-        referencePatch = Patch.TryConvert(_trunk.Retrieve(Constants.ContentKey + _trunk.Delimiter + reference));
-      }
+      if (!KeyRules.IsValidPath(reference, _trunk.Delimiter)) return null;
 
-      return referencePatch;
+      // Array elements are traversed as part of their containing patch and do not
+      // have independently addressable trunk keys.
+      var baseKey = fromPatchKey;
+      var arrayIndex = baseKey.IndexOf('[');
+      if (arrayIndex >= 0) baseKey = baseKey.Substring(0, arrayIndex);
+      while (true)
+      {
+        var candidate = string.IsNullOrEmpty(baseKey) ? reference : baseKey + _trunk.Delimiter + reference;
+        if (Patch.TryConvert(_trunk.Get(candidate, quilterId)) != null) return candidate;
+        if (string.IsNullOrEmpty(baseKey)) break;
+        var delimiterIndex = baseKey.LastIndexOf(_trunk.Delimiter, StringComparison.Ordinal);
+        baseKey = delimiterIndex < 0 ? string.Empty : baseKey.Substring(0, delimiterIndex);
+      }
+      return null;
     }
 
-    private bool CanQuilterCreatePatch(Patch patch, string key, string quilterId)
+    public IEnumerable<Circle> GetCircles(string id)
     {
-      // If user is invalid
-      var quilter = GetQuilter(quilterId);
-      if (quilter == null)
-      {
-        return false;
-      }
-
-      // If user is admin
-      var quilterCircleIds = quilter.CircleIds.EmptyIfNull();
-      if (quilterCircleIds.Contains(Constants.LeadCircleId))
-      {
-        return true;
-      }
-
-      // If patch doesn't exist or has no access restrictions
-      var canonicalPatch = Patch.TryConvert(_trunk.Retrieve(key));
-      if (canonicalPatch == null)
-      {
-        return true;
-      }
-
-      // If patch exists and user has no circle IDs in common with it
-      if (!GetCircleIdsForPatch(key).Intersect(quilterCircleIds).Any())
-      {
-        return false;
-      }
-
-      // Quilter must have access to any added/removed circle IDs
-      return patch.CircleIds
-        .EmptyIfNull()
-        .ExclusiveUnion(canonicalPatch.CircleIds.EmptyIfNull())
-        .All(x => quilterCircleIds.Contains(x));
-    }
-
-    private void PinPatch(Patch patch, string key, string[] quilterCircleIds)
-    {
-      var circleIds = GetCircleIdsForPatch(key);
-      var quilterNotInCircles = !quilterCircleIds
-        .EmptyIfNull()
-        .Intersect(circleIds.EmptyIfNull().Union(patch.CircleIds.EmptyIfNull()))
-        .Any();
-      if (quilterNotInCircles)
-      {
-        patch[Constants.PinnedKey] = quilterNotInCircles;
-      }
-      else if (patch.ContainsKey(Constants.PinnedKey))
-      {
-        patch.Remove(Constants.PinnedKey);
-      }
-    }
-
-    private IEnumerable<Circle> LoadCircles()
-    {
-      var map = GetMap(Constants.CirclesKey);
+      var map = BuildMap(_trunk.GetKeys(Constants.CirclesKey, id));
       foreach (var key in map.GetKeys())
       {
-        yield return new Circle(_trunk.Retrieve(Constants.CirclesKey + _trunk.Delimiter + key));
+        yield return new Circle(_trunk.Get(Constants.CirclesKey + _trunk.Delimiter + key, id));
       }
     }
 
-    private IEnumerable<Patch> LoadQuilters()
+    public IEnumerable<Patch> GetQuilters(string id)
     {
-      var map = GetMap(Constants.QuiltersKey);
+      var map = BuildMap(_trunk.GetKeys(Constants.QuiltersKey, id));
       foreach (var key in map.GetKeys())
       {
-        yield return new Patch(_trunk.Retrieve(Constants.QuiltersKey + _trunk.Delimiter + key));
+        yield return new Patch(_trunk.Get(Constants.QuiltersKey + _trunk.Delimiter + key, id));
       }
     }
   }

@@ -5,7 +5,7 @@ import ReactRoot from "./components/ReactRoot";
 import Script from "./components/Script";
 import Title from "./components/Title";
 
-const REF = "q:ref";
+const MOTIF = "q:motif";
 const TYPE = "ui:type";
 
 const TYPE_PAGE = "Page";
@@ -27,7 +27,7 @@ function createReactComponents(data, root, suppressRender) {
 
   if (Array.isArray(data)) {
     const items = data.map((item) =>
-      createReactComponents(item, root, suppressRender)
+      createReactComponents(item, root, suppressRender),
     );
     return suppressRender ? items.find((x) => x) : items;
   }
@@ -51,22 +51,20 @@ function createReactComponents(data, root, suppressRender) {
     }
   }
 
-  if (data[REF]) {
-    if (root[data[REF]]) {
-      return createReactComponents(root[data[REF]], root, suppressRender);
+  if (data[MOTIF]) {
+    if (root[data[MOTIF]]) {
+      return createReactComponents(root[data[MOTIF]], root, suppressRender);
     }
 
     // Allow default values
-    if (data[data[REF]]) {
-      return createReactComponents(data[data[REF]], root, suppressRender);
+    if (data[data[MOTIF]]) {
+      return createReactComponents(data[data[MOTIF]], root, suppressRender);
     }
 
-    console.warn(`Invalid ref in createReactComponents: ${data[REF]}`);
-    return;
+    throw new Error(`Invalid ref in createReactComponents: ${data[MOTIF]}`);
   }
 
-  console.error("Unexpected data passed to createReactComponents:");
-  console.error(data);
+  throw new Error("Unexpected data passed to createReactComponents.");
 }
 
 export default function App(props) {

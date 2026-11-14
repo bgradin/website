@@ -6,8 +6,6 @@ namespace Gradinware.Data
 {
   public abstract class SqliteDbContext : DbContext
   {
-    protected const string DatabaseRootDirectory = "/data";
-
     private const string _databaseDirectory = "sqlite";
 
     protected abstract string GetDatabaseName();
@@ -19,12 +17,9 @@ namespace Gradinware.Data
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionBuilder)
     {
-      if (!Directory.Exists(DatabaseRootDirectory))
-      {
-        throw new InvalidOperationException();
-      }
-
-      string directory = Path.Combine(DatabaseRootDirectory, GetDatabaseDirectory());
+      var configuredRoot = Environment.GetEnvironmentVariable("DATA_DIRECTORY");
+      string rootDirectory = Path.GetFullPath(string.IsNullOrWhiteSpace(configuredRoot) ? "/data" : configuredRoot);
+      string directory = Path.Combine(rootDirectory, GetDatabaseDirectory());
       Directory.CreateDirectory(directory);
 
       optionBuilder.UseSqlite($"Data Source={directory}/{GetDatabaseName()}");
