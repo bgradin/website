@@ -30,6 +30,17 @@ namespace Gradinware.Data
       catch { storage.Dispose(); throw; }
     }
 
+    public T ReadSnapshot<T>(Func<T> read)
+    {
+      var previous = inTransaction;
+      return storage.ReadSnapshot(() =>
+      {
+        inTransaction = true;
+        try { return read(); }
+        finally { inTransaction = previous; }
+      });
+    }
+
     public void EnsureCreated() { } // Opening the node store initializes its schema.
     public void BeginTransaction() { storage.BeginTransaction(); inTransaction = true; }
     public void CommitTransaction() { try { storage.CommitTransaction(); } finally { inTransaction = false; } }

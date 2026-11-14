@@ -5,5 +5,6 @@ namespace Gradinware.Data
   public interface IContentTrunk : ITrunk
   {
     void EnsureCreated();
+    T ReadSnapshot<T>(System.Func<T> read);
   }
 }

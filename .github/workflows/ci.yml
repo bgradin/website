@@ -30,5 +30,13 @@ jobs:
       - name: Build frontend
         run: yarn build:frontend
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.403"
+
+      - name: Test content and SSR cache
+        run: dotnet run --project tests/ContentStorage/ContentStorage.csproj --configuration Release
+
       - name: Build Docker image
         run: docker build --no-cache -t gradinware-server .

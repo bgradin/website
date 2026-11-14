@@ -18,6 +18,7 @@ var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 Directory.CreateDirectory(directory);
 try
 {
+    await CacheRegression.Run(directory);
     foreach (var emptyFile in new[] { false, true })
     {
         var path = Path.Combine(directory, "sqlite", emptyFile ? "empty.db" : "missing.db");

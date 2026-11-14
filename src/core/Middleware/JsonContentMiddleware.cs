@@ -81,23 +81,18 @@ namespace Gradinware
 
     private async Task<bool> RenderJsonContent(string key, HttpContext context, IContentTrunk trunk, Quilt quilt)
     {
+      key = key.TrimStart('/');
       try
       {
-        string page = null;
-        if (HtmlCache.Exists(key))
-        {
-          page = await HtmlCache.Load(key);
-        }
-        else
-        {
-          JToken data = GetJsonData(key, trunk, quilt);
-          if (data == null)
-          {
-            return false;
-          }
-
-          page = await RenderJsonContent(key, data);
-        }
+        // Resolve the page and every motif in one database snapshot. Never hold a
+        // database transaction open while waiting for the renderer or cache lock.
+        var data = trunk.ReadSnapshot(() => GetJsonData(key, trunk, quilt));
+        if (data == null) return false;
+        var fingerprint = HtmlCache.Fingerprint(data);
+        var page = await HtmlCache.GetOrCreate(fingerprint, key,
+          () => _ssrClient.Render(data));
+        context.Response.ContentType = "text/html; charset=utf-8";
+        context.Response.Headers.CacheControl = "no-cache";
 
         await context.Response.WriteAsync(page);
       }
@@ -108,13 +103,6 @@ namespace Gradinware
       }
 
       return true;
-    }
-
-    private async Task<string> RenderJsonContent(string key, JToken data)
-    {
-      var page = await _ssrClient.Render(data);
-      await HtmlCache.Store(key, page);
-      return page;
     }
 
     private JToken GetJsonData(string key, IContentTrunk trunk, Quilt quilt)

@@ -65,6 +65,11 @@ END;
 CREATE TRIGGER IF NOT EXISTS Nodes_Type_Update BEFORE UPDATE OF Type ON Nodes WHEN NEW.Type<>OLD.Type BEGIN
  SELECT CASE WHEN EXISTS(SELECT 1 FROM Nodes WHERE ParentId=NEW.Id) THEN RAISE(ABORT,'Remove children before changing type') END;
 END;");
+          // Retire the global SSR revision metadata from earlier deployments.
+          Execute(@"DROP TRIGGER IF EXISTS Revision_Insert;
+DROP TRIGGER IF EXISTS Revision_Update;
+DROP TRIGGER IF EXISTS Revision_Delete;
+DROP TABLE IF EXISTS ContentRevision;");
           var storedId = Scalar("SELECT Id FROM Tree LIMIT 1;") as string;
           if (storedId != null && storedId != TreeId) throw new InvalidOperationException("This database belongs to another tree.");
           if (storedId == null)
@@ -130,7 +135,7 @@ END;");
       return current;
     }
     private void CheckTree(string id) { if (id != TreeId) throw new ArgumentException("Unknown tree ID.", nameof(id)); }
-    private T ReadSnapshot<T>(Func<T> action)
+    internal T ReadSnapshot<T>(Func<T> action)
     {
       if (transaction != null) return action();
       using var snapshot = connection.BeginTransaction(deferred: true);

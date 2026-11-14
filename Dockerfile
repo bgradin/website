@@ -16,6 +16,8 @@ COPY src/core/ ./
 RUN dotnet publish -c Release --no-restore -o /publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.14-noble@sha256:de0ee358cdd672f7017a003bed21e9ac9ed48a27c922a59b18175b6e82fa7fee
+ARG SSR_BUILD_VERSION
+ENV SSR_BUILD_VERSION=$SSR_BUILD_VERSION
 ENV ASPNETCORE_URLS=http://*:5000
 ENV ASPNETCORE_ENVIRONMENT=production
 RUN apt-get update && apt-get install -y --no-install-recommends libstdc++6 && rm -rf /var/lib/apt/lists/*
