@@ -11,13 +11,15 @@ namespace Gradinware.Data
   internal sealed class ContentTrunk : IContentTrunk, IDisposable
   {
     private readonly SqliteTrunk storage;
+    private readonly IReadOnlyDictionary<string, JObject> bundledPages;
     private bool inTransaction;
     public string Delimiter => ".";
 
     public ContentTrunk() : this("content.db") { }
 
-    internal ContentTrunk(string databaseName, string dataDirectory = null)
+    internal ContentTrunk(string databaseName, string dataDirectory = null, IReadOnlyDictionary<string, JObject> bundledPages = null)
     {
+      this.bundledPages = bundledPages ?? BundledPages.Load();
       storage = new SqliteTrunk(databaseName, dataDirectory);
       try
       {
@@ -54,6 +56,18 @@ namespace Gradinware.Data
       return value == null ? null : JObject.Parse(value.ToJsonString());
     }
 
+    private IEnumerable<string> ContentKeys() => StoredKeys().Union(bundledPages.Keys, StringComparer.Ordinal);
+
+    private JObject ReadContent(string key) => ReadStored(key)
+      ?? (bundledPages.TryGetValue(key, out var page) ? (JObject)page.DeepClone() : null);
+
+    // Called only after authorization and inside the mutation's savepoint.
+    private void Materialize(string key)
+    {
+      if (ReadStored(key) == null && bundledPages.TryGetValue(key, out var page))
+        storage.Put(Pointer(key), JsonNode.Parse(page.ToString(Newtonsoft.Json.Formatting.None)), storage.TreeId);
+    }
+
     public void Clear(string id)
     {
       if (!ValidName(id)) throw new UnauthorizedAccessException();
@@ -73,7 +87,9 @@ namespace Gradinware.Data
     public IEnumerable<string> GetKeys(string prefix, string id)
     {
       if ((prefix != string.Empty && !KeyRules.IsValidPath(prefix, Delimiter)) || !ValidIdentity(id)) return Array.Empty<string>();
-      return AuthorizedRead(() => StoredKeys()
+      // Quilt uses an empty key list to detect a database that still needs its
+      // initial lead identity. Bundled pages must not prevent that bootstrap.
+      return AuthorizedRead(() => (IsBootstrap(id) ? StoredKeys() : ContentKeys())
         .Where(x => x.StartsWith(prefix, StringComparison.Ordinal))
         .Where(key => CanGet(key, id)).ToList());
     }
@@ -92,10 +108,10 @@ namespace Gradinware.Data
         return container?.SelectToken(arrayAddress.TokenPath, errorWhenNoMatch: false)?.DeepClone();
       }
       if (!KeyRules.IsValidPath(key, Delimiter) || !ValidIdentity(id)) return null;
-      var stored = ReadStored(key);
+      var stored = ReadContent(key);
       if (stored == null)
       {
-        var keys = StoredKeys()
+        var keys = ContentKeys()
           .Where(x => x.StartsWith(key, StringComparison.Ordinal))
           .ToList()
           .Where(x => x.Substring(key.Length).StartsWith(Delimiter, StringComparison.Ordinal))
@@ -120,7 +136,7 @@ namespace Gradinware.Data
             current = current[segment];
           }
 
-          finalToken[finalSegment] = PrepareView(ReadStored(matchingKey), matchingKey, id);
+          finalToken[finalSegment] = PrepareView(ReadContent(matchingKey), matchingKey, id);
         }
 
         return result;
@@ -151,7 +167,7 @@ namespace Gradinware.Data
       if (!CanPut(key, value, id)) return false;
       // Detect collisions. Terminate put operation if this happens
       // rather than attempting to implement complicated merge logic
-      foreach (var relativeKey in StoredKeys()
+      foreach (var relativeKey in ContentKeys()
         .Where(x => x.StartsWith(key + Delimiter, StringComparison.Ordinal))
         .Select(x => x.Substring(key.Length + Delimiter.Length)))
       {
@@ -161,6 +177,7 @@ namespace Gradinware.Data
         }
       }
 
+      Materialize(key);
       var stored = value.DeepClone();
       StripPinned(stored);
       return storage.Put(Pointer(key), JsonNode.Parse(stored.ToString(Newtonsoft.Json.Formatting.None)), storage.TreeId);
@@ -194,9 +211,13 @@ namespace Gradinware.Data
         return PutCore(arrayAddress.ContainerKey, container, id);
       }
       if (!KeyRules.IsValidPath(key, Delimiter) || !ValidIdentity(id) || !CanPut(key, null, id)) return false;
-      var rows = StoredKeys().Where(x => x == key || x.StartsWith(key + Delimiter, StringComparison.Ordinal)).ToList();
+      var rows = ContentKeys().Where(x => x == key || x.StartsWith(key + Delimiter, StringComparison.Ordinal)).ToList();
       if (rows.Count == 0 || rows.Any(x => !CanPut(x, null, id))) return false;
-      foreach (var row in rows) storage.Delete(Pointer(row), storage.TreeId);
+      foreach (var row in rows)
+      {
+        Materialize(row);
+        storage.Delete(Pointer(row), storage.TreeId);
+      }
       return true;
     }
 
@@ -395,12 +416,12 @@ namespace Gradinware.Data
 
     private JObject ReadExact(string key)
     {
-      return ReadStored(key);
+      return ReadContent(key);
     }
 
     private bool HasPatchOrDescendant(string key)
     {
-      return StoredKeys()
+      return ContentKeys()
         .Any(candidate => candidate == key || candidate.StartsWith(key + Delimiter, StringComparison.Ordinal));
     }
 

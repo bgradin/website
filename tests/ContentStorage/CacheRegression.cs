@@ -161,6 +161,7 @@ CREATE TRIGGER Revision_Delete AFTER DELETE ON Nodes BEGIN UPDATE ContentRevisio
       Check((await Request()).Status == 404, "middleware returns 404 after cached page deletion");
       Check(quilt.Create(JObject.Parse("{ 'q:content': { 'index': { 'q:motif': 'page' } }, 'page': { 'text': 'imported' } }"), "admin"), "import succeeds");
       Check((await Request()).Body.Contains("imported"), "import refreshes cached page");
+      await BundledRegression.Run(directory);
     }
     finally
     {
