@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "./components/Link";
 import Meta from "./components/Meta";
 import Page from "./components/Page";
@@ -20,8 +21,12 @@ const COMPONENTS = {
   Title,
 };
 
+const HTML_TAG_NAME = /^[a-z][a-z0-9-]*$/;
+
+const isMetadata = (key) => key.startsWith("q:") || key.startsWith("ui:");
+
 function createReactComponents(data, root, suppressRender) {
-  if (typeof data !== "object") {
+  if (data === null || typeof data !== "object") {
     return suppressRender ? undefined : data;
   }
 
@@ -32,22 +37,38 @@ function createReactComponents(data, root, suppressRender) {
     return suppressRender ? items.find((x) => x) : items;
   }
 
-  if (data[TYPE] && COMPONENTS[data[TYPE]]) {
+  const type = data[TYPE];
+  const component = Object.prototype.hasOwnProperty.call(COMPONENTS, type)
+    ? COMPONENTS[type]
+    : undefined;
+  const isHtml = typeof type === "string" && HTML_TAG_NAME.test(type);
+  if (component || isHtml) {
     if (suppressRender) {
       // On the client side, we only want to render descendents of react root
       if (data[TYPE] === TYPE_REACT_ROOT) {
         return createReactComponents(data.children, root, false);
       }
 
+      if (isHtml) {
+        return createReactComponents(data.children ?? null, root, true);
+      }
+
       return Object.keys(data)
+        .filter((key) => !isMetadata(key))
         .map((key) => createReactComponents(data[key], root, suppressRender))
         .find((x) => x);
     } else {
       const props = Object.keys(data).reduce((obj, key) => {
-        obj[key] = createReactComponents(data[key], root, suppressRender);
+        if (isMetadata(key)) return obj;
+        // Native attributes (including style objects) are props, not render trees.
+        // Children and motif-backed attributes still resolve through Quilt.
+        obj[key] =
+          !isHtml || key === "children" || data[key]?.[MOTIF]
+            ? createReactComponents(data[key], root, false)
+            : data[key];
         return obj;
       }, {});
-      return COMPONENTS[data[TYPE]](props);
+      return React.createElement(component || type, props);
     }
   }
 

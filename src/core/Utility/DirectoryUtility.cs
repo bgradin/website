@@ -11,7 +11,8 @@ namespace Gradinware.Utility
 
     public static string RemoveLeadingSeparator(string path)
     {
-      return !string.IsNullOrEmpty(path) && path[0] == Path.DirectorySeparatorChar ? path.Substring(1) : path;
+      return !string.IsNullOrEmpty(path) && (path[0] == Path.DirectorySeparatorChar || path[0] == Path.AltDirectorySeparatorChar)
+        ? path.Substring(1) : path;
     }
   }
 }

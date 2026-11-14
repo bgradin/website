@@ -9,13 +9,13 @@ public sealed class TrunkAuthorizationTests : IDisposable
 {
   private readonly string _dataDirectory = Path.Combine(Path.GetTempPath(), "quilt-auth-" + Guid.NewGuid().ToString("N"));
   private readonly string? _oldDataDirectory = Environment.GetEnvironmentVariable("DATA_DIRECTORY");
-  private readonly SqliteBsonTrunk _trunk;
+  private readonly ContentTrunk _trunk;
 
   public TrunkAuthorizationTests()
   {
     Environment.SetEnvironmentVariable("DATA_DIRECTORY", _dataDirectory);
-    _trunk = new SqliteBsonTrunk("content.db");
-    _trunk.Database.EnsureCreated();
+    _trunk = new ContentTrunk("content.db");
+    _trunk.EnsureCreated();
     Seed();
   }
 

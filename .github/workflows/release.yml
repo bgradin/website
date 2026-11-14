@@ -1,0 +1,84 @@
+name: Reviewed production release
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.403
+      - name: Test authorization
+        run: dotnet test tests/Quilt.Authorization.Tests/Quilt.Authorization.Tests.csproj --configuration Release
+      - name: Build image without production secrets
+        run: |
+          docker build --label "org.opencontainers.image.revision=$GITHUB_SHA" -t website-release .
+          docker save website-release -o "$RUNNER_TEMP/website-image.tar"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: website-image
+          path: ${{ runner.temp }}/website-image.tar
+          retention-days: 1
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: registry-publish
+    outputs:
+      digest: ${{ steps.publish.outputs.digest }}
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: website-image
+          path: ${{ runner.temp }}
+      - name: Publish immutable release reference
+        id: publish
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DOCKER_CONFIG
+          DOCKER_CONFIG=$(mktemp -d)
+          trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+          docker load -i "$RUNNER_TEMP/website-image.tar"
+          printf '%s' "$REGISTRY_PASSWORD" | docker login www.gradinware.com -u "$REGISTRY_USERNAME" --password-stdin
+          image="www.gradinware.com/gradinware/server:sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker tag website-release "$image"
+          docker push "$image"
+          # Inspect the registry manifest, rather than using the local image ID.
+          digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])')
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Published $image@$digest" >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Deploy approved digest over restricted SSH
+        env:
+          IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+          VPS_DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          deploy_temp=$(mktemp -d)
+          trap 'rm -rf "$deploy_temp"' EXIT
+          printf '%s\n' "$VPS_DEPLOY_KEY" > "$deploy_temp/key"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$deploy_temp/known_hosts"
+          chmod 600 "$deploy_temp/key" "$deploy_temp/known_hosts"
+          ssh -i "$deploy_temp/key" -p 2345 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$deploy_temp/known_hosts" root@23.92.54.12 "deploy $IMAGE_DIGEST"
+          code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' https://www.gradinware.com/)
+          test "$code" = 200

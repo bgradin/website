@@ -28,6 +28,8 @@ namespace Gradinware
                     user.Password = user.Password.EncryptPassword();
                 }
                 db.SaveChanges();
+                // Initialize the node-backed content store before accepting requests.
+                scope.ServiceProvider.GetRequiredService<IContentTrunk>().EnsureCreated();
             }
             host.Run();
         }

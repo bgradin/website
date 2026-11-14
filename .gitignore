@@ -7,3 +7,8 @@ data/
 bin/
 obj/
 src/ui/public/assets/
+
+.env
+**/.env*
+**/*.key
+**/*.pem

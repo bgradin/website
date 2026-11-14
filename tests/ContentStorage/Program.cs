@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Gradinware;
 using Gradinware.Data;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 
@@ -21,25 +20,26 @@ try
 {
     foreach (var emptyFile in new[] { false, true })
     {
-        var path = Path.Combine(directory, emptyFile ? "empty.db" : "missing.db");
+        var path = Path.Combine(directory, "sqlite", emptyFile ? "empty.db" : "missing.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
         if (emptyFile) File.WriteAllBytes(path, Array.Empty<byte>());
-        using (var trunk = new TestTrunk(path))
+        using (var trunk = new ContentTrunk(Path.GetFileName(path), directory))
         {
-            Check(!trunk.GetKeys().Any(), "new schema has no keys: " + emptyFile);
-            Check(trunk.Retrieve("missing") == null, "missing value returns null: " + emptyFile);
+            Check(!trunk.GetKeys("admin").Any(), "new schema has no keys: " + emptyFile);
+            Check(trunk.Get("missing", "admin") == null, "missing value returns null: " + emptyFile);
             trunk.BeginTransaction();
-            Check(trunk.Stow("content.test", JObject.Parse("{\"message\":\"saved\"}")), "write to initialized schema");
+            Check(trunk.Put("q:quilters.admin", JObject.Parse("{\"q:circleIds\":[\"lead\"],\"message\":\"saved\"}"), "admin"), "write to initialized schema");
             trunk.CommitTransaction();
         }
-        using (var trunk = new TestTrunk(path))
+        using (var trunk = new ContentTrunk(Path.GetFileName(path), directory))
         {
-            Check(trunk.Retrieve("content.test")["message"].Value<string>() == "saved", "reopening preserves data");
-            trunk.Clear();
-            Check(!trunk.GetKeys().Any(), "clear initialized schema");
+            Check(trunk.Get("q:quilters.admin", "admin")["message"].Value<string>() == "saved", "reopening preserves data");
+            trunk.Clear("admin");
+            Check(!trunk.GetKeys("admin").Any(), "clear initialized schema");
         }
     }
 
-    using (var trunk = new TestTrunk(Path.Combine(directory, "pages.db")))
+    using (var trunk = new ContentTrunk("pages.db", directory))
     using (var services = new ServiceCollection().AddSingleton<IContentTrunk>(trunk).BuildServiceProvider())
     {
         var context = new DefaultHttpContext { RequestServices = services };
@@ -73,14 +73,6 @@ finally
 {
     Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
     Directory.Delete(directory, true);
-}
-
-sealed class TestTrunk : SqliteBsonTrunk, IContentTrunk
-{
-    public TestTrunk(string path) : base(path) { }
-    public void EnsureCreated() => Database.EnsureCreated();
-    protected override void OnConfiguring(DbContextOptionsBuilder options) =>
-        options.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = GetDatabaseName() }.ToString());
 }
 
 sealed class RejectServices : IServiceProvider

@@ -7,3 +7,7 @@ src/core/obj
 src/ui/public/assets
 *.db
 *.sqlite
+.env
+**/.env*
+**/*.key
+**/*.pem
