@@ -1,0 +1,320 @@
+{
+  "ui:type": "Page",
+  "head": [
+    {
+      "ui:type": "meta",
+      "charSet": "utf-8",
+      "key": "0"
+    },
+    {
+      "ui:type": "meta",
+      "name": "viewport",
+      "content": "width=device-width, initial-scale=1",
+      "key": "1"
+    },
+    {
+      "ui:type": "Title",
+      "text": "Your account | Gradinware",
+      "key": "2"
+    },
+    {
+      "ui:type": "link",
+      "rel": "stylesheet",
+      "href": "/assets/main.css",
+      "key": "3"
+    }
+  ],
+  "body": [
+    {
+      "ui:type": "header",
+      "className": "site-header",
+      "children": [
+        {
+          "ui:type": "a",
+          "href": "/",
+          "className": "brand",
+          "children": "gradinware",
+          "key": "0"
+        },
+        {
+          "ui:type": "nav",
+          "aria-label": "Main navigation",
+          "children": [
+            {
+              "ui:type": "a",
+              "href": "/login/",
+              "children": "Sign in",
+              "key": "0",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "a",
+              "href": "/register/",
+              "children": "Create account",
+              "key": "1",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "a",
+              "href": "/account/",
+              "children": "Your account",
+              "key": "account-logout",
+              "data-session-visibility": "signed-in"
+            },
+            {
+              "ui:type": "a",
+              "href": "/login/",
+              "data-site-logout": "true",
+              "data-session-visibility": "signed-in",
+              "children": "Log out",
+              "key": "logout"
+            }
+          ],
+          "key": "1"
+        }
+      ],
+      "key": "0"
+    },
+    {
+      "ui:type": "main",
+      "className": "account-page",
+      "children": [
+        {
+          "ui:type": "h1",
+          "children": "Your account",
+          "key": "0"
+        },
+        {
+          "ui:type": "div",
+          "className": "card",
+          "children": [
+            {
+              "ui:type": "section",
+              "id": "account-summary",
+              "hidden": true,
+              "children": [
+                {
+                  "ui:type": "dl",
+                  "children": [
+                    {
+                      "ui:type": "dt",
+                      "children": "First name",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "dd",
+                      "id": "summary-firstName",
+                      "key": "1"
+                    },
+                    {
+                      "ui:type": "dt",
+                      "children": "Last name",
+                      "key": "2"
+                    },
+                    {
+                      "ui:type": "dd",
+                      "id": "summary-lastName",
+                      "key": "3"
+                    },
+                    {
+                      "ui:type": "dt",
+                      "children": "Email address",
+                      "key": "4"
+                    },
+                    {
+                      "ui:type": "dd",
+                      "id": "summary-email",
+                      "key": "5"
+                    }
+                  ],
+                  "key": "0"
+                },
+                {
+                  "ui:type": "button",
+                  "id": "edit-account",
+                  "type": "button",
+                  "children": "Edit",
+                  "key": "1"
+                }
+              ],
+              "key": "0"
+            },
+            {
+              "ui:type": "form",
+              "id": "profile-form",
+              "hidden": true,
+              "noValidate": true,
+              "method": "post",
+              "action": "/api/v1/users/me",
+              "children": [
+                {
+                  "ui:type": "div",
+                  "className": "field",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "firstName",
+                      "children": "First name",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "firstName",
+                      "name": "firstName",
+                      "type": "text",
+                      "autoComplete": "given-name",
+                      "minLength": 2,
+                      "required": true,
+                      "aria-describedby": "firstName-error",
+                      "maxLength": 35,
+                      "key": "1"
+                    },
+                    {
+                      "ui:type": "p",
+                      "id": "firstName-error",
+                      "className": "field-error",
+                      "aria-live": "polite",
+                      "key": "2"
+                    }
+                  ],
+                  "key": "0"
+                },
+                {
+                  "ui:type": "div",
+                  "className": "field",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "lastName",
+                      "children": "Last name",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "lastName",
+                      "name": "lastName",
+                      "type": "text",
+                      "autoComplete": "family-name",
+                      "minLength": 2,
+                      "required": true,
+                      "aria-describedby": "lastName-error",
+                      "maxLength": 35,
+                      "key": "1"
+                    },
+                    {
+                      "ui:type": "p",
+                      "id": "lastName-error",
+                      "className": "field-error",
+                      "aria-live": "polite",
+                      "key": "2"
+                    }
+                  ],
+                  "key": "1"
+                },
+                {
+                  "ui:type": "div",
+                  "className": "field",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "email",
+                      "children": "Email address",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "email",
+                      "name": "email",
+                      "type": "email",
+                      "autoComplete": "email",
+                      "minLength": 3,
+                      "required": true,
+                      "aria-describedby": "email-error",
+                      "maxLength": 320,
+                      "key": "1"
+                    },
+                    {
+                      "ui:type": "p",
+                      "id": "email-error",
+                      "className": "field-error",
+                      "aria-live": "polite",
+                      "key": "2"
+                    }
+                  ],
+                  "key": "2"
+                },
+                {
+                  "ui:type": "div",
+                  "className": "field",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "password",
+                      "children": "New password (optional)",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "password",
+                      "name": "password",
+                      "type": "password",
+                      "autoComplete": "new-password",
+                      "minLength": 12,
+                      "required": false,
+                      "aria-describedby": "password-error",
+                      "key": "1"
+                    },
+                    {
+                      "ui:type": "p",
+                      "id": "password-error",
+                      "className": "field-error",
+                      "aria-live": "polite",
+                      "key": "2"
+                    }
+                  ],
+                  "key": "3"
+                },
+                {
+                  "ui:type": "p",
+                  "className": "hint",
+                  "children": "Leave the password blank to keep it. A new password must contain at least 12 characters.",
+                  "key": "4"
+                },
+                {
+                  "ui:type": "button",
+                  "type": "submit",
+                  "children": "Save",
+                  "key": "5"
+                },
+                {
+                  "ui:type": "button",
+                  "type": "button",
+                  "id": "cancel-edit",
+                  "children": "Cancel",
+                  "key": "6"
+                }
+              ],
+              "key": "1"
+            },
+            {
+              "ui:type": "p",
+              "id": "status",
+              "role": "status",
+              "aria-live": "polite",
+              "children": "Loading your account\u2026",
+              "key": "2"
+            }
+          ],
+          "key": "1"
+        }
+      ],
+      "key": "1"
+    },
+    {
+      "ui:type": "footer",
+      "className": "site-footer",
+      "children": "GRADINWARE \u00a9 2026",
+      "key": "2"
+    }
+  ]
+}

@@ -1,7 +1,10 @@
-using System;
+using System.Linq;
 using System.Net;
-using Microsoft.AspNetCore.Mvc;
+using System;
+using Gradinware.Data;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Gradinware.Attributes
 {
@@ -23,6 +26,16 @@ namespace Gradinware.Attributes
         {
           StatusCode = (int) HttpStatusCode.Unauthorized,
         };
+      }
+      else
+      {
+        var token = context.HttpContext.Request.Headers[_authorizationHeaderName].ToString().Substring(7);
+        var userId = Convert.ToInt32(token.DeserializeAccessToken()["userId"]);
+        var db = context.HttpContext.RequestServices.GetRequiredService<AccountContext>();
+        if (!db.Users.Any(user => user.Id == userId))
+        {
+          context.Result = new UnauthorizedResult();
+        }
       }
     }
 

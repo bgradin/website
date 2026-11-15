@@ -1,5 +1,16 @@
 IMAGE = gradinware-server
 CONTAINER = gradinware-server-dev
+ENV_FILE ?= .env
+
+# Docker reads dotenv values as data; never evaluate secrets as Make or shell code.
+LOCAL_ENV_FILE = $(if $(wildcard $(ENV_FILE)),--env-file "$(ENV_FILE)")
+RUNTIME_VARIABLES = PRODUCTION_JWT_KEY \
+                    PRODUCTION_RECAPTCHA_SITE_KEY \
+                    PRODUCTION_RECAPTCHA_SECRET_KEY \
+                    PRODUCTION_RECAPTCHA_HOSTNAME \
+                    OAuth__JwtKey Recaptcha__SiteKey Recaptcha__SecretKey \
+                    Recaptcha__Hostname Content__AdminUserId
+RUNTIME_OVERRIDES = $(foreach variable,$(RUNTIME_VARIABLES),$(if $(filter undefined,$(origin $(variable))),,-e $(variable)))
 
 .DEFAULT_GOAL := start
 
@@ -9,7 +20,15 @@ stop: ## Stop dev server
 	docker stop $(CONTAINER) >/dev/null 2>&1 || true
 
 start: create ## Start dev server
-	@if docker inspect $(CONTAINER) >/dev/null 2>&1; then docker start $(CONTAINER); else docker run -dit -p 5000:5000 -v $(shell pwd)/data:/data -e PRODUCTION_JWT_KEY -e Content__AdminUserId --name $(CONTAINER) $(IMAGE); fi
+	@if docker inspect $(CONTAINER) >/dev/null 2>&1; then \
+		docker start $(CONTAINER); \
+	else \
+		docker run -dit -p 5000:5000 -v $(shell pwd)/data:/data \
+			-v "$(shell pwd)/src/core/pages:/app/pages:ro" \
+			$(LOCAL_ENV_FILE) $(RUNTIME_OVERRIDES) \
+			-e ASPNETCORE_ENVIRONMENT=Development \
+			--name $(CONTAINER) $(IMAGE); \
+	fi
 
 destroy: stop ## Destroy dev environment
 	docker rm $(CONTAINER) >/dev/null 2>&1 || true

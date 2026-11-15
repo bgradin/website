@@ -1,17 +1,17 @@
-using System;
 using System.IO;
+using System.Text;
+using System.Threading.RateLimiting;
+using System;
 using Gradinware.Data;
 using Gradinware.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
-using System.Text;
 
 namespace Gradinware
 {
@@ -25,13 +25,29 @@ namespace Gradinware
     public void ConfigureServices(IServiceCollection services)
     {
       services.AddLogging();
+      services.AddHttpClient("captcha", client => client.Timeout = TimeSpan.FromSeconds(10));
+      services.AddAuthentication("site").AddCookie("site", options =>
+      {
+        options.Cookie.Name = "__Host-gradinware";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.Always;
+        options.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+      });
       services.AddSingleton<Gradinware.CustomFrame.FrameCatalog>();
       services.AddSingleton(TimeProvider.System);
       services.AddSingleton<Gradinware.CustomFrame.DropboxTokenProvider>();
       services.AddHttpClient("CustomFrameDropbox")
         .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.HttpClientHandler { AllowAutoRedirect = false })
         .RemoveAllLoggers();
-      services.AddScoped<IContentTrunk, ContentTrunk>();
+      services.AddScoped<IContentTrunk>(provider =>
+      {
+        var environment = provider.GetRequiredService<IWebHostEnvironment>();
+        var pages = environment.IsDevelopment()
+          ? BundledPages.ReadDirectory(Path.Combine(environment.ContentRootPath, "pages"))
+          : BundledPages.Load();
+        return new ContentTrunk("content.db", bundledPages: pages);
+      });
       services.AddAuthorization();
       services.AddControllers();
       services.AddHttpClient<IReactSsrClient, ReactSsrClient>();
@@ -71,6 +87,7 @@ namespace Gradinware
 
       app.UseRouting();
       app.UseRateLimiter();
+      app.UseAuthentication();
       app.UseAuthorization();
 
       app.UseEndpoints(endpoints =>

@@ -26,6 +26,7 @@ internal static class BundledRegression
 
   public static async Task Run(string directory)
   {
+    await DevelopmentPages(directory);
     var embedded = BundledPages.Read(typeof(BundledRegression).Assembly);
     Check(embedded["q:content.docs/index"]["title"].Value<string>() == "embedded docs", "embedded JSON resources preserve nested routes");
     var pages = new Dictionary<string, JObject>
@@ -83,5 +84,48 @@ internal static class BundledRegression
     trunk.Put("q:quilters.admin", JObject.Parse("{ 'q:circleIds': ['lead'] }"), "admin");
     Check((await Request("/")).Body.Contains("original"), "clearing database preserves bundled pages");
     Check(pages["q:content.index"]["items"][0]["text"].Value<string>() == "original", "bundle objects remain immutable across reads and edits");
+  }
+
+  private static async Task DevelopmentPages(string directory)
+  {
+    var pagesDirectory = Path.Combine(directory, "development-pages");
+    Directory.CreateDirectory(Path.Combine(pagesDirectory, "docs"));
+    var page = Path.Combine(pagesDirectory, "docs", "index.json");
+    var motif = Path.Combine(pagesDirectory, "shared.json");
+    File.WriteAllText(page, "{ 'q:motif': 'shared', 'title': 'initial development page' }");
+    File.WriteAllText(motif, "{ 'text': 'initial development motif' }");
+    using var services = new ServiceCollection()
+      .AddScoped<IContentTrunk>(_ => new ContentTrunk("development-pages.db", directory, BundledPages.ReadDirectory(pagesDirectory)))
+      .BuildServiceProvider();
+    using (var scope = services.CreateScope())
+      new Quilt(scope.ServiceProvider.GetRequiredService<IContentTrunk>()).Create(new JObject(), "admin");
+    var middleware = new JsonContentMiddleware(ctx => { ctx.Response.StatusCode = 404; return Task.CompletedTask; }, new Renderer());
+    async Task<(int Status, string Body)> Request()
+    {
+      using var scope = services.CreateScope();
+      var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+      context.Request.Path = "/docs/";
+      using var body = new MemoryStream();
+      context.Response.Body = body;
+      await middleware.InvokeAsync(context);
+      body.Position = 0;
+      using var reader = new StreamReader(body);
+      return (context.Response.StatusCode, await reader.ReadToEndAsync());
+    }
+    Check((await Request()).Body.Contains("initial development page"), "development files render nested routes");
+    File.WriteAllText(page, "{ 'q:motif': 'shared', 'title': 'updated development page' }");
+    File.WriteAllText(motif, "{ 'text': 'updated development motif' }");
+    var updated = await Request();
+    Check(updated.Body.Contains("updated development page") && updated.Body.Contains("updated development motif"), "development file edits invalidate cached HTML on next request");
+    using (var scope = services.CreateScope())
+      scope.ServiceProvider.GetRequiredService<IContentTrunk>().Put("q:content.docs/index", JObject.Parse("{ 'title': 'saved override' }"), "admin");
+    Check((await Request()).Body.Contains("saved override"), "database overrides development files");
+    using (var scope = services.CreateScope())
+      scope.ServiceProvider.GetRequiredService<IContentTrunk>().Delete("q:content.docs/index", "admin");
+    Check((await Request()).Body.Contains("updated development page"), "removing override restores current development file");
+    File.Delete(page);
+    Check((await Request()).Status == 404, "deleted development files stop serving cached HTML");
+    File.WriteAllText(page, "{ 'title': 'new development page' }");
+    Check((await Request()).Body.Contains("new development page"), "new development files render without rebuilding");
   }
 }

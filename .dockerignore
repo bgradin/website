@@ -4,7 +4,7 @@ data
 node_modules
 src/core/bin
 src/core/obj
-src/ui/public/assets
+src/ui/public/assets/main*
 *.db
 *.sqlite
 .env

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,12 +20,14 @@ Directory.CreateDirectory(directory);
 try
 {
     await CacheRegression.Run(directory);
+    await SiteRegression.Run(directory);
+    var noBundledPages = new Dictionary<string, JObject>();
     foreach (var emptyFile in new[] { false, true })
     {
         var path = Path.Combine(directory, "sqlite", emptyFile ? "empty.db" : "missing.db");
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         if (emptyFile) File.WriteAllBytes(path, Array.Empty<byte>());
-        using (var trunk = new ContentTrunk(Path.GetFileName(path), directory))
+        using (var trunk = new ContentTrunk(Path.GetFileName(path), directory, noBundledPages))
         {
             Check(!trunk.GetKeys("admin").Any(), "new schema has no keys: " + emptyFile);
             Check(trunk.Get("missing", "admin") == null, "missing value returns null: " + emptyFile);
@@ -32,7 +35,7 @@ try
             Check(trunk.Put("q:quilters.admin", JObject.Parse("{\"q:circleIds\":[\"lead\"],\"message\":\"saved\"}"), "admin"), "write to initialized schema");
             trunk.CommitTransaction();
         }
-        using (var trunk = new ContentTrunk(Path.GetFileName(path), directory))
+        using (var trunk = new ContentTrunk(Path.GetFileName(path), directory, noBundledPages))
         {
             Check(trunk.Get("q:quilters.admin", "admin")["message"].Value<string>() == "saved", "reopening preserves data");
             trunk.Clear("admin");

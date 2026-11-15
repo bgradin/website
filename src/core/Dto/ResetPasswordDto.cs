@@ -10,7 +10,7 @@ namespace Gradinware.Dto
     public string Token { get; set; }
 
     [Required]
-    [MinLength(8)]
+    [MinLength(12, ErrorMessage = "Use at least 12 characters for your password.")]
     [JsonPropertyName("password")]
     public string Password { get; set; }
   }

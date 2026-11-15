@@ -4,6 +4,15 @@ set -eu
 if [ -n "${PRODUCTION_JWT_KEY:-}" ]; then
   export OAuth__JwtKey="$PRODUCTION_JWT_KEY"
 fi
+if [ -n "${PRODUCTION_RECAPTCHA_SITE_KEY:-}" ]; then
+  export Recaptcha__SiteKey="$PRODUCTION_RECAPTCHA_SITE_KEY"
+fi
+if [ -n "${PRODUCTION_RECAPTCHA_SECRET_KEY:-}" ]; then
+  export Recaptcha__SecretKey="$PRODUCTION_RECAPTCHA_SECRET_KEY"
+fi
+if [ -n "${PRODUCTION_RECAPTCHA_HOSTNAME:-}" ]; then
+  export Recaptcha__Hostname="$PRODUCTION_RECAPTCHA_HOSTNAME"
+fi
 
 node ui/index.js &
 node_pid=$!

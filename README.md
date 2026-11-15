@@ -2,41 +2,78 @@
 
 [![CI](https://github.com/bgradin/website/actions/workflows/ci.yml/badge.svg)](https://github.com/bgradin/website/actions/workflows/ci.yml)
 
-Public portfolio + personal website for the Gradins
+Public portfolio and personal website for the Gradins.
 
 ## Dependencies
 
-- [Docker](https://www.docker.com/)
-- [Yarn](https://yarnpkg.com/)
-- .NET 10 SDK for direct local builds (version selected by [`global.json`](global.json))
+- [Docker](https://www.docker.com/) for container builds and local hosting.
+- [GNU Make](https://www.gnu.org/software/make/) for development commands.
+- [Node.js 24](https://nodejs.org/) and [Yarn 1.22.22](https://yarnpkg.com/) for
+  frontend builds.
+- [.NET 10 SDK](https://dotnet.microsoft.com/) for direct backend builds and
+  tests; SDK selection is defined in [global.json](global.json).
+- Python 3 for runtime configuration tests.
+
+Development on Windows uses [WSL](https://docs.microsoft.com/en-us/windows/wsl/)
+and [VS Code](https://code.visualstudio.com/).
+
+## Building
+
+Build the frontend and Docker image:
+
+```sh
+make create
+```
+
+To build the frontend or backend independently:
+
+```sh
+yarn install --frozen-lockfile --non-interactive
+yarn build:frontend
+dotnet build src/core/Gradinware.csproj
+```
+
+The Dockerfile builds the frontend and backend in separate stages and packages
+them into the runtime image.
 
 ## Developing
 
-I'm developing on Windows using [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) through [VSCode](https://code.visualstudio.com/). Theoretically this code should compile on anywhere on 64-bit linux.
+Run `make` to build and start the development container at
+[localhost:5000](http://localhost:5000). Run `make help` to list available commands.
 
-Run `make` to start a dev server at [localhost:5000](http://localhost:5000). `make help` lists all available options.
+| Command         | Purpose                                                   |
+| --------------- | --------------------------------------------------------- |
+| `make frontend` | Rebuild frontend assets.                                  |
+| `make stop`     | Stop the development container.                           |
+| `make rebuild`  | Rebuild the image and recreate the development container. |
+| `make destroy`  | Remove the development container and image.               |
 
-The application requires a JWT signing key at runtime. Generate a private local key and export it before starting the container:
+Backend code and bundled pages live in `src/core`. React code, Sass, and public
+assets live in `src/ui`. Local SQLite data persists in the `data` directory.
+See [Quilt documentation](docs/QUILT.md) for the content model.
+
+Run the backend and runtime configuration checks:
 
 ```sh
-export PRODUCTION_JWT_KEY="$(openssl rand -hex 32)"
-make
+dotnet test tests/Quilt.Authorization.Tests/Quilt.Authorization.Tests.csproj
+dotnet run --project tests/ContentStorage/ContentStorage.csproj
+python3 tests/Configuration/configuration.py
 ```
 
-For deployment, set `PRODUCTION_JWT_KEY` from the deployment secret store. Add the same secret to Travis CI as a protected environment variable for tagged builds. The container maps it to `OAuth__JwtKey` at startup; the value is not embedded in the image. The runtime host must pass `PRODUCTION_JWT_KEY` to the container as well. Content authoring access also requires `Content__AdminUserId` to be set to the numeric account ID allowed to administer content. Password reset requires `Email__SmtpHost`, `Email__From`, and `PasswordReset__Url`; configure `Email__SmtpPort`, `Email__Username`, `Email__Password`, and `Email__UseSsl` as needed for the mail provider.
+## Deploying
 
-## Deployment
+[CI](.github/workflows/ci.yml) builds the frontend, runs checks, and builds the
+Docker image on pushes and pull requests.
 
-GitHub Actions builds the frontend and Docker image on pushes and pull requests.
-Pushing a tag also publishes the Docker image to `www.gradinware.com/gradinware/server`
-with both the tag name and `latest`.
+To release to production:
 
-Configure the `REGISTRY_USERNAME` and `REGISTRY_PASSWORD` repository secrets in
-GitHub under **Settings → Secrets and variables → Actions** to enable publishing.
+1. Open **Actions → Reviewed production release** in GitHub.
+2. Select **Run workflow** and choose the `master` branch.
+3. Complete any required approvals for the `registry-publish` and `production`
+   environments.
+4. Confirm that the publish and deploy jobs succeed.
 
-## TODO
-
-- Improve account API
-- Improve content import/create endpoint
-- Create site editor
-- Create site
+The [release workflow](.github/workflows/release.yml) tests and builds the site,
+publishes an immutable image reference to `www.gradinware.com/gradinware/server`,
+and deploys that image by digest over SSH. It then checks that the production
+homepage returns HTTP 200.

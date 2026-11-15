@@ -73,6 +73,30 @@ namespace Gradinware
       finally { gate.Release(); }
     }
 
+    public static async Task Clear()
+    {
+      // Drain every in-flight render before deleting, so it cannot repopulate stale entries.
+      var acquiredGateCount = 0;
+      try
+      {
+        foreach (var gate in Gates)
+        {
+          await gate.WaitAsync();
+          acquiredGateCount++;
+        }
+
+        if (Directory.Exists(Root)) Directory.Delete(Root, recursive: true);
+        Interlocked.Exchange(ref nextCleanup, 0);
+      }
+      finally
+      {
+        for (var i = acquiredGateCount - 1; i >= 0; i--)
+        {
+          Gates[i].Release();
+        }
+      }
+    }
+
     private static void Cleanup()
     {
       var now = DateTime.UtcNow;

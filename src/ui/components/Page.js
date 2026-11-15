@@ -6,7 +6,10 @@ function Page(props) {
   return (
     <html lang="en">
       <head>{head}</head>
-      <body>{body}</body>
+      <body>
+        {body}
+        <script src="/assets/account.js"></script>
+      </body>
     </html>
   );
 }

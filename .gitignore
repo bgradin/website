@@ -6,9 +6,10 @@ data/
 !src/**/data/
 bin/
 obj/
-src/ui/public/assets/
+src/ui/public/assets/main*
 
 .env
+.env*
 **/.env*
 **/*.key
 **/*.pem

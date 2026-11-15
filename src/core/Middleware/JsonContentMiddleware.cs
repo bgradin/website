@@ -82,6 +82,14 @@ namespace Gradinware
     private async Task<bool> RenderJsonContent(string key, HttpContext context, IContentTrunk trunk, Quilt quilt)
     {
       key = key.TrimStart('/');
+      var isAdminPage = key == "admin" || key.StartsWith("admin/", StringComparison.Ordinal);
+      if (isAdminPage && !SiteSession.IsAdmin(context))
+      {
+        context.Response.StatusCode = 403;
+        context.Response.Headers.CacheControl = "no-store";
+        await context.Response.WriteAsync("Access denied. Sign in with an administrator account at /login/.");
+        return true;
+      }
       try
       {
         // Resolve the page and every motif in one database snapshot. Never hold a
@@ -92,7 +100,7 @@ namespace Gradinware
         var page = await HtmlCache.GetOrCreate(fingerprint, key,
           () => _ssrClient.Render(data));
         context.Response.ContentType = "text/html; charset=utf-8";
-        context.Response.Headers.CacheControl = "no-cache";
+        context.Response.Headers.CacheControl = isAdminPage ? "no-store" : "no-cache";
 
         await context.Response.WriteAsync(page);
       }

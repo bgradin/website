@@ -3,7 +3,7 @@
   <ItemGroup><ProjectReference Include="../../src/core/Gradinware.csproj" /></ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="BundledPages/**/*.json">
-      <LogicalName>BundledPages/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+      <LogicalName>pages/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>

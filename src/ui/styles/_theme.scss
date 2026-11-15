@@ -1,0 +1,22 @@
+// Swap these values to change the site palette in one place.
+$primary: #ff3e00;
+$primary-strong: #b92d00;
+$primary-soft: #fff0e9;
+$ink: #24212a;
+$muted: #68616b;
+$background: #faf8f5;
+$surface: #ffffff;
+$border: #ded8d2;
+$danger: #b42318;
+
+:root {
+  --primary: #{$primary};
+  --primary-strong: #{$primary-strong};
+  --primary-soft: #{$primary-soft};
+  --ink: #{$ink};
+  --muted: #{$muted};
+  --background: #{$background};
+  --surface: #{$surface};
+  --border: #{$border};
+  --danger: #{$danger};
+}

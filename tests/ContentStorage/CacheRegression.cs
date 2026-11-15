@@ -161,6 +161,22 @@ CREATE TRIGGER Revision_Delete AFTER DELETE ON Nodes BEGIN UPDATE ContentRevisio
       Check((await Request()).Status == 404, "middleware returns 404 after cached page deletion");
       Check(quilt.Create(JObject.Parse("{ 'q:content': { 'index': { 'q:motif': 'page' } }, 'page': { 'text': 'imported' } }"), "admin"), "import succeeds");
       Check((await Request()).Body.Contains("imported"), "import refreshes cached page");
+      var clearStarted = new TaskCompletionSource();
+      var releaseRender = new TaskCompletionSource();
+      var pendingRender = HtmlCache.GetOrCreate("clear-test", "clear-race", async () =>
+      {
+        clearStarted.SetResult();
+        await releaseRender.Task;
+        return "old HTML";
+      });
+      await clearStarted.Task;
+      var clearCache = HtmlCache.Clear();
+      Check(!clearCache.IsCompleted, "manual cache clear waits for in-flight renders");
+      releaseRender.SetResult();
+      await pendingRender;
+      await clearCache;
+      Check(!Directory.Exists(Path.Combine(directory, "cache", "ssr-v2")), "manual cache clear removes all HTML entries");
+      Check(await HtmlCache.GetOrCreate("clear-test", "clear-race", () => Task.FromResult("fresh HTML")) == "fresh HTML", "pages regenerate after manual clear");
       await BundledRegression.Run(directory);
     }
     finally

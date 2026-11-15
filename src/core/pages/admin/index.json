@@ -1,0 +1,315 @@
+{
+  "ui:type": "Page",
+  "head": [
+    {
+      "ui:type": "meta",
+      "charSet": "utf-8",
+      "key": "0"
+    },
+    {
+      "ui:type": "meta",
+      "name": "viewport",
+      "content": "width=device-width, initial-scale=1",
+      "key": "1"
+    },
+    {
+      "ui:type": "Title",
+      "text": "Site administration | Gradinware",
+      "key": "2"
+    },
+    {
+      "ui:type": "link",
+      "rel": "stylesheet",
+      "href": "/assets/main.css",
+      "key": "3"
+    }
+  ],
+  "body": [
+    {
+      "ui:type": "header",
+      "className": "site-header",
+      "children": [
+        {
+          "ui:type": "a",
+          "href": "/",
+          "className": "brand",
+          "children": "gradinware",
+          "key": "0"
+        },
+        {
+          "ui:type": "nav",
+          "aria-label": "Main navigation",
+          "children": [
+            {
+              "ui:type": "a",
+              "href": "/login/",
+              "children": "Sign in",
+              "key": "0",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "a",
+              "href": "/register/",
+              "children": "Create account",
+              "key": "1",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "a",
+              "href": "/account/",
+              "children": "Your account",
+              "key": "account-logout",
+              "data-session-visibility": "signed-in"
+            },
+            {
+              "ui:type": "a",
+              "href": "/login/",
+              "data-site-logout": "true",
+              "data-session-visibility": "signed-in",
+              "children": "Log out",
+              "key": "logout"
+            }
+          ],
+          "key": "1"
+        }
+      ],
+      "key": "0"
+    },
+    {
+      "ui:type": "main",
+      "className": "account-page wide",
+      "children": [
+        {
+          "ui:type": "p",
+          "className": "eyebrow",
+          "children": "WORKSPACE / ADMINISTRATION",
+          "key": "0"
+        },
+        {
+          "ui:type": "h1",
+          "children": "Site administration",
+          "key": "1"
+        },
+        {
+          "ui:type": "p",
+          "className": "intro",
+          "children": "A clear view of your community and site.",
+          "key": "2"
+        },
+        {
+          "ui:type": "div",
+          "className": "admin-content",
+          "children": [
+            {
+              "ui:type": "div",
+              "className": "toolbar",
+              "children": [
+                {
+                  "ui:type": "p",
+                  "id": "session-name",
+                  "children": "Loading your account\u2026",
+                  "key": "0"
+                },
+                {
+                  "ui:type": "a",
+                  "href": "/account/",
+                  "children": "Your account",
+                  "key": "account-1",
+                  "data-session-visibility": "signed-in"
+                },
+                {
+                  "ui:type": "button",
+                  "id": "logout",
+                  "children": "Sign out",
+                  "key": "1",
+                  "data-site-logout": "true"
+                }
+              ],
+              "key": "0"
+            },
+            {
+              "ui:type": "section",
+              "className": "panel",
+              "children": [
+                {
+                  "ui:type": "div",
+                  "className": "toolbar",
+                  "children": [
+                    {
+                      "ui:type": "div",
+                      "children": [
+                        {
+                          "ui:type": "h2",
+                          "children": "People",
+                          "key": "0"
+                        },
+                        {
+                          "ui:type": "p",
+                          "className": "muted",
+                          "children": "Account details, without passwords or security tokens.",
+                          "key": "1"
+                        }
+                      ],
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "span",
+                      "id": "user-count",
+                      "className": "badge",
+                      "children": "",
+                      "key": "1"
+                    }
+                  ],
+                  "key": "0"
+                },
+                {
+                  "ui:type": "div",
+                  "className": "table-scroll",
+                  "children": [
+                    {
+                      "ui:type": "table",
+                      "children": [
+                        {
+                          "ui:type": "caption",
+                          "className": "sr-only",
+                          "children": "Registered users",
+                          "key": "0"
+                        },
+                        {
+                          "ui:type": "thead",
+                          "children": {
+                            "ui:type": "tr",
+                            "children": [
+                              {
+                                "ui:type": "th",
+                                "scope": "col",
+                                "children": "User",
+                                "key": "0"
+                              },
+                              {
+                                "ui:type": "th",
+                                "scope": "col",
+                                "children": "Email",
+                                "key": "1"
+                              },
+                              {
+                                "ui:type": "th",
+                                "scope": "col",
+                                "children": "Joined",
+                                "key": "2"
+                              },
+                              {
+                                "ui:type": "th",
+                                "scope": "col",
+                                "children": "Last sign-in",
+                                "key": "3"
+                              },
+                              {
+                                "ui:type": "th",
+                                "scope": "col",
+                                "children": "Actions",
+                                "key": "4"
+                              }
+                            ]
+                          },
+                          "key": "1"
+                        },
+                        {
+                          "ui:type": "tbody",
+                          "id": "users",
+                          "key": "2"
+                        }
+                      ],
+                      "key": "0"
+                    }
+                  ],
+                  "key": "1"
+                },
+                {
+                  "ui:type": "div",
+                  "className": "pagination",
+                  "children": [
+                    {
+                      "ui:type": "button",
+                      "id": "previous",
+                      "children": "Previous",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "span",
+                      "id": "page-number",
+                      "children": "Page 1",
+                      "key": "1"
+                    },
+                    {
+                      "ui:type": "button",
+                      "id": "next",
+                      "children": "Next",
+                      "key": "2"
+                    }
+                  ],
+                  "key": "2"
+                }
+              ],
+              "key": "1"
+            },
+            {
+              "ui:type": "section",
+              "className": "panel toolbar",
+              "children": [
+                {
+                  "ui:type": "div",
+                  "children": [
+                    {
+                      "ui:type": "h2",
+                      "children": "A fresh start for your cache",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "p",
+                      "className": "muted",
+                      "children": "Clear all server-rendered page cache entries. Pages regenerate on their next visit.",
+                      "key": "1"
+                    }
+                  ],
+                  "key": "0"
+                },
+                {
+                  "ui:type": "button",
+                  "id": "clear-cache",
+                  "children": "Clear site cache",
+                  "key": "1"
+                }
+              ],
+              "key": "2"
+            },
+            {
+              "ui:type": "p",
+              "id": "status",
+              "role": "status",
+              "aria-live": "polite",
+              "children": "",
+              "key": "3"
+            }
+          ],
+          "key": "3"
+        }
+      ],
+      "key": "1"
+    },
+    {
+      "ui:type": "footer",
+      "className": "site-footer",
+      "children": "GRADINWARE \u00a9 2026",
+      "key": "2"
+    }
+  ],
+  "q:access": {
+    "get": [
+      "lead"
+    ],
+    "put": [
+      "lead"
+    ]
+  }
+}

@@ -13,6 +13,19 @@ namespace Gradinware.Data
 
     internal static IReadOnlyDictionary<string, JObject> Load() => Pages.Value;
 
+    internal static IReadOnlyDictionary<string, JObject> ReadDirectory(string directory)
+    {
+      var pages = new Dictionary<string, JObject>(StringComparer.Ordinal);
+      foreach (var path in Directory.EnumerateFiles(directory, "*.json", SearchOption.AllDirectories))
+      {
+        var route = Path.GetRelativePath(directory, path).Replace('\\', '/');
+        var key = Constants.ContentKey + "." + route.Substring(0, route.Length - ".json".Length);
+        if (!KeyRules.IsValidPath(key, ".")) throw new InvalidOperationException("Invalid bundled page route: " + route);
+        pages.Add(key, JObject.Parse(File.ReadAllText(path)));
+      }
+      return pages;
+    }
+
     internal static IReadOnlyDictionary<string, JObject> Read(Assembly assembly)
     {
       const string prefix = "pages/";

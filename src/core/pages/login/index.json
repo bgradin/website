@@ -1,0 +1,192 @@
+{
+  "ui:type": "Page",
+  "head": [
+    {
+      "ui:type": "meta",
+      "charSet": "utf-8",
+      "key": "0"
+    },
+    {
+      "ui:type": "meta",
+      "name": "viewport",
+      "content": "width=device-width, initial-scale=1",
+      "key": "1"
+    },
+    {
+      "ui:type": "Title",
+      "text": "Welcome back. | Gradinware",
+      "key": "2"
+    },
+    {
+      "ui:type": "link",
+      "rel": "stylesheet",
+      "href": "/assets/main.css",
+      "key": "3"
+    }
+  ],
+  "body": [
+    {
+      "ui:type": "header",
+      "className": "site-header",
+      "children": [
+        {
+          "ui:type": "a",
+          "href": "/",
+          "className": "brand",
+          "children": "gradinware",
+          "key": "0"
+        },
+        {
+          "ui:type": "nav",
+          "aria-label": "Main navigation",
+          "children": [
+            {
+              "ui:type": "a",
+              "href": "/login/",
+              "children": "Sign in",
+              "key": "0",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "a",
+              "href": "/register/",
+              "children": "Create account",
+              "key": "1",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "a",
+              "href": "/account/",
+              "children": "Your account",
+              "key": "account-logout",
+              "data-session-visibility": "signed-in"
+            },
+            {
+              "ui:type": "a",
+              "href": "/login/",
+              "data-site-logout": "true",
+              "data-session-visibility": "signed-in",
+              "children": "Log out",
+              "key": "logout"
+            }
+          ],
+          "key": "1"
+        }
+      ],
+      "key": "0"
+    },
+    {
+      "ui:type": "main",
+      "className": "account-page ",
+      "children": [
+        {
+          "ui:type": "h1",
+          "children": "Welcome back.",
+          "key": "1"
+        },
+        {
+          "ui:type": "p",
+          "className": "intro",
+          "children": "Please log in to continue.",
+          "key": "2"
+        },
+        {
+          "ui:type": "div",
+          "className": "card",
+          "children": [
+            {
+              "ui:type": "form",
+              "id": "login-form",
+              "children": [
+                {
+                  "ui:type": "div",
+                  "className": "field",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "email",
+                      "children": "Email address",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "email",
+                      "name": "email",
+                      "type": "email",
+                      "required": true,
+                      "autoComplete": "email",
+                      "key": "1"
+                    }
+                  ],
+                  "key": "0"
+                },
+                {
+                  "ui:type": "div",
+                  "className": "field",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "password",
+                      "children": "Password",
+                      "key": "0"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "password",
+                      "name": "password",
+                      "type": "password",
+                      "required": true,
+                      "autoComplete": "current-password",
+                      "key": "1"
+                    }
+                  ],
+                  "key": "1"
+                },
+                {
+                  "ui:type": "button",
+                  "type": "submit",
+                  "children": "Sign in",
+                  "key": "2"
+                }
+              ],
+              "key": "2",
+              "method": "post",
+              "action": "/api/v1/users/sessions"
+            },
+            {
+              "ui:type": "p",
+              "className": "footnote",
+              "children": [
+                "New here? ",
+                {
+                  "ui:type": "a",
+                  "href": "/register/",
+                  "children": "Create an account",
+                  "key": "1"
+                }
+              ],
+              "key": "3",
+              "data-session-visibility": "signed-out"
+            },
+            {
+              "ui:type": "p",
+              "id": "status",
+              "role": "status",
+              "aria-live": "polite",
+              "children": "",
+              "key": "4"
+            }
+          ],
+          "key": "3"
+        }
+      ],
+      "key": "1"
+    },
+    {
+      "ui:type": "footer",
+      "className": "site-footer",
+      "children": "GRADINWARE \u00a9 2026",
+      "key": "2"
+    }
+  ]
+}

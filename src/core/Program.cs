@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Gradinware.Data;
+using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Configuration;
 using System.Text;
 using System.Linq;
@@ -29,7 +30,17 @@ namespace Gradinware
                 }
                 db.SaveChanges();
                 // Initialize the node-backed content store before accepting requests.
-                scope.ServiceProvider.GetRequiredService<IContentTrunk>().EnsureCreated();
+                var trunk = scope.ServiceProvider.GetRequiredService<IContentTrunk>();
+                trunk.EnsureCreated();
+                var adminName = host.Services.GetRequiredService<IConfiguration>()["AdminUsername"];
+                var adminKey = "q:quilters." + adminName;
+                if (!string.IsNullOrWhiteSpace(adminName) && trunk.Get(adminKey, adminName) == null)
+                {
+                    // The trunk permits this only during the empty-store bootstrap.
+                    // Bundled pages do not materialize content or prevent that bootstrap.
+                    var leadIdentity = new JObject { ["q:circleIds"] = new JArray("lead") };
+                    trunk.Put(adminKey, leadIdentity, adminName);
+                }
             }
             host.Run();
         }
