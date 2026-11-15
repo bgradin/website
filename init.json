@@ -1,9 +1,4 @@
 {
-  "q:quilters": {
-    "admin": {
-      "q:circleIds": ["lead"]
-    }
-  },
   "q:circles": {
     "authors": {
       "q:name": "Authors"
@@ -15,61 +10,155 @@
   "q:content": {
     "index": {
       "q:motif": "templates.content-page",
-      "page:title": "Gradinware.com",
-      "page:content": "Hello, world!"
+      "page:title": "/",
+      "page:heading": "Hello!",
+      "page:text": "Welcome to gradinware.com!",
+      "page:body": [
+        {
+          "ui:type": "ReactRoot",
+          "children": {
+            "ui:type": "main",
+            "children": [
+              {
+                "ui:type": "h1",
+                "children": {
+                  "q:motif": "page:heading"
+                }
+              },
+              {
+                "ui:type": "p",
+                "children": {
+                  "q:motif": "page:text"
+                }
+              },
+              {
+                "ui:type": "nav",
+                "id": "account-links",
+                "aria-label": "Account",
+                "key": "account-links",
+                "children": [
+                  {
+                    "ui:type": "a",
+                    "href": "/login/",
+                    "className": "button",
+                    "key": "login",
+                    "children": "Log in",
+                    "data-session-visibility": "signed-out"
+                  },
+                  {
+                    "ui:type": "a",
+                    "href": "/register/",
+                    "className": "button",
+                    "key": "register",
+                    "children": "Register",
+                    "data-session-visibility": "signed-out"
+                  },
+                  {
+                    "ui:type": "a",
+                    "href": "/login/",
+                    "className": "button",
+                    "data-site-logout": "true",
+                    "data-session-visibility": "signed-in",
+                    "key": "logout",
+                    "children": "Log out"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "q:motif": "page:scripts",
+          "page:scripts": [
+            {
+              "ui:type": "Script",
+              "src": "/assets/main.js"
+            }
+          ]
+        }
+      ]
     },
     "templates": {
       "content-page": {
-        "ui:type": "page",
+        "ui:type": "Page",
         "head": {
-          "q:motif": "page:head"
+          "q:motif": "page:head",
+          "page:head": [
+            {
+              "ui:type": "Meta",
+              "charset": "utf-8"
+            },
+            {
+              "ui:type": "Title",
+              "text": {
+                "q:motif": "page:title"
+              }
+            },
+            {
+              "q:motif": "page:styles",
+              "page:styles": [
+                {
+                  "ui:type": "Link",
+                  "rel": "stylesheet",
+                  "href": "https://cdn.simplecss.org/simple.css"
+                },
+                {
+                  "ui:type": "Link",
+                  "rel": "stylesheet",
+                  "href": "/assets/main.css"
+                }
+              ]
+            }
+          ]
         },
         "body": {
-          "q:motif": "page:body"
-        },
-        "page:head": [
-          {
-            "ui:type": "meta",
-            "charset": "utf-8"
-          },
-          {
-            "ui:type": "title",
-            "text": {
-              "q:motif": "page:title"
+          "q:motif": "page:body",
+          "page:body": [
+            {
+              "ui:type": "ReactRoot",
+              "children": {
+                "ui:type": "main",
+                "children": [
+                  {
+                    "ui:type": "h1",
+                    "children": {
+                      "q:motif": "page:heading"
+                    }
+                  },
+                  {
+                    "ui:type": "p",
+                    "children": {
+                      "q:motif": "page:text"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "q:motif": "page:scripts",
+              "page:scripts": [
+                {
+                  "ui:type": "Script",
+                  "src": "/assets/main.js"
+                }
+              ]
             }
-          },
-          {
-            "q:motif": "page:styles"
-          }
-        ],
-        "page:styles": [
-          {
-            "ui:type": "link",
-            "rel": "stylesheet",
-            "href": "https://cdn.simplecss.org/simple.css"
-          },
-          {
-            "ui:type": "link",
-            "rel": "stylesheet",
-            "href": "/assets/main.css"
-          }
-        ],
-        "page:body": [
-          {
-            "ui:type": "reactRoot",
-            "children": "page:content"
-          },
-          {
-            "q:motif": "page:scripts"
-          }
-        ],
-        "page:scripts": [
-          {
-            "ui:type": "script",
-            "src": "/assets/main.js"
-          }
-        ]
+          ]
+        }
       }
+    },
+    "404": {
+      "q:motif": "templates.content-page",
+      "page:title": "/",
+      "page:heading": "404",
+      "page:text": "You requested a page that doesn't exist!"
+    }
+  },
+  "q:quilters": {
+    "admin": {
+      "q:circleIds": [
+        "lead"
+      ]
     }
   }
 }
