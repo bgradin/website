@@ -209,7 +209,9 @@ internal static class SiteRegression
         ControllerContext = new ControllerContext { HttpContext = context }
       };
       var update = new UpdateUserDto { FirstName = "Updated", LastName = "User", Email = otherUser.Email };
-      Check((profile.UpdateUser(update) as StatusCodeResult)?.StatusCode == 403,
+      var originalFirstName = otherUser.FirstName;
+      Check((profile.UpdateUser(update) as ObjectResult)?.StatusCode == 403 &&
+        otherUser.FirstName == originalFirstName,
         "profile cookie updates require the action header");
       context.Request.Headers["X-Site-Action"] = "1";
       update.Email = admin.Email;
