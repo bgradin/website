@@ -6,6 +6,8 @@ using Gradinware.Data;
 using Gradinware.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 using Quilting;
 
@@ -15,11 +17,13 @@ namespace Gradinware
   {
     private readonly RequestDelegate _next;
     private readonly IReactSsrClient _ssrClient;
+    private readonly ILogger<JsonContentMiddleware> _logger;
 
-    public JsonContentMiddleware(RequestDelegate next, IReactSsrClient ssrClient)
+    public JsonContentMiddleware(RequestDelegate next, IReactSsrClient ssrClient, ILogger<JsonContentMiddleware> logger = null)
     {
       _next = next;
       _ssrClient = ssrClient;
+      _logger = logger ?? NullLogger<JsonContentMiddleware>.Instance;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -98,7 +102,7 @@ namespace Gradinware
         if (data == null) return false;
         var fingerprint = HtmlCache.Fingerprint(data);
         var page = await HtmlCache.GetOrCreate(fingerprint, key,
-          () => _ssrClient.Render(data));
+          () => _ssrClient.Render(data, context.RequestAborted), context.RequestAborted);
         context.Response.ContentType = "text/html; charset=utf-8";
         context.Response.Headers.CacheControl = isAdminPage ? "no-store" : "no-cache";
 
@@ -106,7 +110,15 @@ namespace Gradinware
       }
       catch (HttpRequestException ex)
       {
-        await ReportServerError(context, ex);
+        _logger.LogError(ex, "SSR failed for {PageKey}", key);
+        await ReportServerError(context, 500);
+        return true;
+      }
+
+      catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested)
+      {
+        _logger.LogWarning("SSR timed out for {PageKey}", key);
+        await ReportServerError(context, 504);
         return true;
       }
 
@@ -118,48 +130,14 @@ namespace Gradinware
       return quilt.GetPatch(Quilting.Constants.ContentKey + trunk.Delimiter + key, Startup.Configuration?["AdminUsername"]);
     }
 
-    private static async Task ReportServerError(HttpContext context, Exception ex)
+    private static async Task ReportServerError(HttpContext context, int status)
     {
-      await UpdateStatusAndWriteServerError(context, async () =>
-      {
-        await context.Response.WriteAsync($@"<!--
-    Exception: {ex.Message}
-    Stacktrace: {ex.StackTrace}
--->
-");
-
-        await ReportServerError(context);
-      });
-    }
-
-    private static async Task ReportServerError(HttpContext context)
-    {
-      await context.Response.WriteAsync($@"
-  <h1>Error</h1>
-  <p>Sorry, the server threw an unexpected error 😔. Try again later.</p>
-");
-    }
-
-    private static async Task UpdateStatusAndWriteServerError(HttpContext context, Func<Task> writeError)
-    {
-      if (context.Response.StatusCode != 500)
-      {
-        context.Response.StatusCode = 500;
-      }
-
-      await context.Response.WriteAsync($@"<!DOCTYPE html>
-  <html lang=""en"">
-  <head>
-    <meta charset=""utf-8"">
-    <title>Error</title>
-    <link rel=""stylesheet"" href=""https://cdn.simplecss.org/simple.css"">
-  </head>
-  <body>
-");
-
-      await writeError();
-
-      await context.Response.WriteAsync("</body></html>");
+      context.Response.StatusCode = status;
+      context.Response.ContentType = "text/html; charset=utf-8";
+      context.Response.Headers.CacheControl = "no-store";
+      await context.Response.WriteAsync(@"<!DOCTYPE html>
+<html lang=""en""><head><meta charset=""utf-8""><title>Error</title></head>
+<body><h1>Error</h1><p>Sorry, the server could not render this page. Try again later.</p></body></html>");
     }
   }
 }

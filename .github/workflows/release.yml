@@ -49,6 +49,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          missing_credentials=false
+          for name in REGISTRY_USERNAME REGISTRY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing secret $name. Configure it in the registry-publish environment or as an accessible Actions repository/organization secret."
+              missing_credentials=true
+            fi
+          done
+          if [[ "$missing_credentials" == true ]]; then
+            exit 1
+          fi
           export DOCKER_CONFIG
           DOCKER_CONFIG=$(mktemp -d)
           trap 'rm -rf "$DOCKER_CONFIG"' EXIT

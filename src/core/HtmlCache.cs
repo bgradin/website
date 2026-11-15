@@ -34,30 +34,31 @@ namespace Gradinware
     internal static string Fingerprint(JToken data) => Convert.ToHexString(
       SHA256.HashData(Encoding.UTF8.GetBytes(data.ToString(Formatting.None))));
 
-    public static async Task<string> GetOrCreate(string fingerprint, string key, Func<Task<string>> render)
+    public static async Task<string> GetOrCreate(string fingerprint, string key, Func<Task<string>> render, CancellationToken cancellationToken = default)
     {
       var digest = SHA256.HashData(Encoding.UTF8.GetBytes("resolved-json-v1\0" + BuildVersion + "\0" + fingerprint + "\0" + key.TrimStart('/')));
       var path = Path.Combine(Root, Convert.ToHexString(digest) + ".html");
       var gate = Gates[digest[0] % Gates.Length];
-      await gate.WaitAsync();
+      await gate.WaitAsync(cancellationToken);
       try
       {
         Cleanup();
         try
         {
           if (File.Exists(path) && DateTime.UtcNow - File.GetLastWriteTimeUtc(path) < Lifetime)
-            return await File.ReadAllTextAsync(path);
+            return await File.ReadAllTextAsync(path, cancellationToken);
         }
         catch (IOException) { } // A cleanup or another process may remove the entry.
         catch (UnauthorizedAccessException) { }
 
+        cancellationToken.ThrowIfCancellationRequested();
         var html = await render();
         if (html == null || Lifetime == TimeSpan.Zero) return html;
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
           Directory.CreateDirectory(Root);
-          await File.WriteAllTextAsync(temporary, html);
+          await File.WriteAllTextAsync(temporary, html, cancellationToken);
           File.Move(temporary, path, overwrite: true);
         }
         catch (IOException) { } // Cache failures must not prevent serving a rendered page.

@@ -38,7 +38,7 @@ class ConfigurationTests(unittest.TestCase):
         path.chmod(0o700)
 
     def run_entrypoint(self):
-        self.executable("node", "#!/bin/sh\nexit 0\n")
+        self.executable("node", '#!/bin/sh\nif [ "$1" = "-e" ]; then exit 0; fi\nexec sleep 60\n')
         self.executable("dotnet", """#!/usr/bin/env python3
 import json, os
 from pathlib import Path
@@ -46,7 +46,7 @@ names = ['OAuth__JwtKey', 'Recaptcha__SiteKey', 'Recaptcha__SecretKey', 'Recaptc
 Path(os.environ['CONFIGURATION_CAPTURE']).write_text(json.dumps({name: os.environ.get(name) for name in names}))
 """)
         subprocess.run(
-            ["sh", str(ROOT / "entrypoint.sh")], cwd=self.directory,
+            ["bash", str(ROOT / "entrypoint.sh")], cwd=self.directory,
             env=self.environment, check=True, capture_output=True, text=True,
         )
         return json.loads(Path(self.environment["CONFIGURATION_CAPTURE"]).read_text())
@@ -70,6 +70,55 @@ Path(os.environ['CONFIGURATION_CAPTURE']).write_text(json.dumps({name: os.enviro
             self.environment[application_name] = "local-test-value"
         captured = self.run_entrypoint()
         self.assertTrue(all(value == "local-test-value" for value in captured.values()))
+
+    def check_supervision(self, renderer_exit=None, backend_exit=None):
+        # Each fake service records its PID. The renderer waits for backend
+        # startup so this exercises supervision after the readiness check.
+        self.executable("node", """#!/usr/bin/env python3
+import os, sys, time
+from pathlib import Path
+if sys.argv[1] == '-e':
+    sys.exit(0)
+Path('node.pid').write_text(str(os.getpid()))
+while not Path('dotnet.pid').exists():
+    time.sleep(0.01)
+if os.environ.get('TEST_RENDERER_EXIT') is not None:
+    sys.exit(int(os.environ['TEST_RENDERER_EXIT']))
+while True:
+    time.sleep(1)
+""")
+        self.executable("dotnet", """#!/usr/bin/env python3
+import os, sys, time
+from pathlib import Path
+Path('dotnet.pid').write_text(str(os.getpid()))
+if os.environ.get('TEST_BACKEND_EXIT') is not None:
+    sys.exit(int(os.environ['TEST_BACKEND_EXIT']))
+while True:
+    time.sleep(1)
+""")
+        if renderer_exit is not None:
+            self.environment['TEST_RENDERER_EXIT'] = str(renderer_exit)
+        if backend_exit is not None:
+            self.environment['TEST_BACKEND_EXIT'] = str(backend_exit)
+        result = subprocess.run(
+            ["bash", str(ROOT / "entrypoint.sh")], cwd=self.directory,
+            env=self.environment, capture_output=True, text=True, timeout=5,
+        )
+        expected = (renderer_exit or 1) if renderer_exit is not None else backend_exit
+        self.assertEqual(result.returncode, expected, result.stderr)
+        for service in ['node', 'dotnet']:
+            pid = int((self.directory / (service + '.pid')).read_text())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(pid, 0)
+
+    def test_renderer_failure_stops_backend(self):
+        self.check_supervision(renderer_exit=7)
+
+    def test_unexpected_clean_renderer_exit_stops_backend(self):
+        self.check_supervision(renderer_exit=0)
+
+    def test_backend_failure_stops_renderer(self):
+        self.check_supervision(backend_exit=9)
 
     def run_make(self, *arguments):
         shutil.copy(ROOT / "Makefile", self.directory / "Makefile")

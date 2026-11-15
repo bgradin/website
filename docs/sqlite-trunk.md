@@ -62,7 +62,16 @@ Native elements accept React props such as `className`, `htmlFor`, `aria-label`,
 `data-*`, and object-valued `style`. Children and motif-backed attributes are
 resolved against the page patch. Properties starting with `q:` or `ui:` are
 metadata and are excluded from component and DOM props. The same rendering
-rules apply during SSR and client hydration.
+rules apply during SSR and client hydration. Structured attribute and component
+props remain data unless explicitly marked with `ui:type` or `q:motif`;
+`children` and the `Page.head` and `Page.body` slots are render trees.
+
+Motif lookup uses property existence, so `false`, `0`, empty strings, and null
+are valid resolved values. Cycles are rejected; both input and expanded trees
+are bounded to 128 levels and 10,000 values. A page may contain at most one
+`ReactRoot`, whose children are the client hydration tree. The document renderer
+accepts `Page` or native `html` roots, validates the head/body structure, and
+adds the doctype, escaped page state, and supporting scripts.
 
 ## Pointer and lifecycle semantics
 

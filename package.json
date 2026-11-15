@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build:frontend": "esbuild src/ui/client.js --bundle --minify --loader:.js=jsx --jsx=automatic --target=es2015 --outfile=src/ui/public/assets/main.js && sass --no-source-map src/ui/styles/main.scss:src/ui/public/assets/main.css",
-    "build": "docker build -t gradinware-server ."
+    "build": "docker build -t gradinware-server .",
+    "build:ssr": "esbuild src/ui/index.js --bundle --platform=node --target=node24 --format=cjs --loader:.js=jsx --jsx=automatic --define:process.env.NODE_ENV=\\\"production\\\" --outfile=dist/ssr.cjs",
+    "test:rendering": "esbuild tests/UiRendering/rendering.js --bundle --platform=node --format=cjs --loader:.js=jsx --jsx=automatic --outfile=dist/rendering-tests.cjs && node dist/rendering-tests.cjs"
   },
   "author": "Brian Gradin",
   "license": "MIT",
@@ -14,10 +16,6 @@
     "node": ">=24 <25"
   },
   "dependencies": {
-    "@babel/core": "^7.20.2",
-    "@babel/preset-env": "^7.20.2",
-    "@babel/preset-react": "^7.18.6",
-    "@babel/register": "^7.18.9",
     "express": "4.17.1",
     "react": "18.2.0",
     "react-dom": "18.2.0"

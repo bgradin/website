@@ -8,7 +8,6 @@ function Page(props) {
       <head>{head}</head>
       <body>
         {body}
-        <script src="/assets/account.js"></script>
       </body>
     </html>
   );

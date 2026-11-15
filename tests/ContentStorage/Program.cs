@@ -19,6 +19,7 @@ var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 Directory.CreateDirectory(directory);
 try
 {
+    await SsrRegression.Run(directory);
     await CacheRegression.Run(directory);
     await SiteRegression.Run(directory);
     var noBundledPages = new Dictionary<string, JObject>();

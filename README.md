@@ -30,6 +30,7 @@ To build the frontend or backend independently:
 ```sh
 yarn install --frozen-lockfile --non-interactive
 yarn build:frontend
+yarn build:ssr
 dotnet build src/core/Gradinware.csproj
 ```
 

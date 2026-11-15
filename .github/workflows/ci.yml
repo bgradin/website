@@ -20,7 +20,6 @@ jobs:
       - name: Test runtime configuration
         run: python3 tests/Configuration/configuration.py
 
-      # Keep the existing Node version for compatibility with node-sass 7.
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -32,6 +31,12 @@ jobs:
 
       - name: Build frontend
         run: yarn build:frontend
+
+      - name: Build SSR service
+        run: yarn build:ssr
+
+      - name: Test UI rendering and SSR
+        run: yarn test:rendering
 
       - name: Test session navigation
         run: node tests/UiRendering/sessionNavigation.js

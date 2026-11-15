@@ -24,7 +24,7 @@ internal static class CacheRegression
   private sealed class Renderer : IReactSsrClient
   {
     public int Calls;
-    public Task<string> Render(JToken data) { Calls++; return Task.FromResult(data.ToString()); }
+    public Task<string> Render(JToken data, System.Threading.CancellationToken cancellationToken = default) { Calls++; return Task.FromResult(data.ToString()); }
   }
 
   public static async Task Run(string directory)

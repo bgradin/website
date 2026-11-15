@@ -1,8 +1,9 @@
 using System;
-using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Gradinware.Services
@@ -15,32 +16,18 @@ namespace Gradinware.Services
     {
       _client = client;
       _client.BaseAddress = new Uri("http://127.0.0.1:3000");
-      _client.Timeout = new TimeSpan(0, 0, 5);
-      _client.DefaultRequestHeaders.Clear();
+      _client.Timeout = TimeSpan.FromSeconds(5);
     }
 
-    public async Task<string> Render(JToken json)
+    public async Task<string> Render(JToken json, CancellationToken cancellationToken = default)
     {
-      var request = new HttpRequestMessage(HttpMethod.Post, "/");
-      request.Content = new StringContent(json.ToString(), Encoding.UTF8, "application/json");
-
-      using (var response = await _client.SendAsync(request))
+      using var request = new HttpRequestMessage(HttpMethod.Post, "/")
       {
-        try
-        {
-          var body = await response.Content.ReadAsStringAsync();
-          if (response.StatusCode != HttpStatusCode.OK)
-          {
-            throw new HttpRequestException(body);
-          }
-
-          return body;
-        }
-        catch (HttpRequestException)
-        {
-          throw;
-        }
-      }
+        Content = new StringContent(json.ToString(Formatting.None), Encoding.UTF8, "application/json")
+      };
+      using var response = await _client.SendAsync(request, cancellationToken);
+      response.EnsureSuccessStatusCode();
+      return await response.Content.ReadAsStringAsync(cancellationToken);
     }
   }
 }

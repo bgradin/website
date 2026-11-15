@@ -13,3 +13,5 @@ src/ui/public/assets/main*
 **/.env*
 **/*.key
 **/*.pem
+
+dist/

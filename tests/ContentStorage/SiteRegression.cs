@@ -58,7 +58,7 @@ internal static class SiteRegression
 
   private sealed class Renderer : IReactSsrClient
   {
-    public Task<string> Render(JToken data) => Task.FromResult(data.ToString());
+    public Task<string> Render(JToken data, System.Threading.CancellationToken cancellationToken = default) => Task.FromResult(data.ToString());
   }
 
   private sealed class CaptchaFactory : IHttpClientFactory

@@ -8,86 +8,94 @@ import Title from "./components/Title";
 
 const MOTIF = "q:motif";
 const TYPE = "ui:type";
-
-const TYPE_PAGE = "Page";
-const TYPE_REACT_ROOT = "ReactRoot";
-
-const COMPONENTS = {
-  Link,
-  Meta,
-  [TYPE_PAGE]: Page, // Pedantic, but good to be explicit since we reference these keys below
-  [TYPE_REACT_ROOT]: ReactRoot,
-  Script,
-  Title,
-};
-
+const COMPONENTS = { Link, Meta, Page, ReactRoot, Script, Title };
 const HTML_TAG_NAME = /^[a-z][a-z0-9-]*$/;
-
+const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 const isMetadata = (key) => key.startsWith("q:") || key.startsWith("ui:");
+const isTree = (value) => value && typeof value === "object" &&
+  (has(value, TYPE) || has(value, MOTIF));
 
-function createReactComponents(data, root, suppressRender) {
-  if (data === null || typeof data !== "object") {
-    return suppressRender ? undefined : data;
-  }
+export class RenderDataError extends Error {}
 
-  if (Array.isArray(data)) {
-    const items = data.map((item) =>
-      createReactComponents(item, root, suppressRender),
-    );
-    return suppressRender ? items.find((x) => x) : items;
-  }
-
-  const type = data[TYPE];
-  const component = Object.prototype.hasOwnProperty.call(COMPONENTS, type)
-    ? COMPONENTS[type]
-    : undefined;
-  const isHtml = typeof type === "string" && HTML_TAG_NAME.test(type);
-  if (component || isHtml) {
-    if (suppressRender) {
-      // On the client side, we only want to render descendents of react root
-      if (data[TYPE] === TYPE_REACT_ROOT) {
-        return createReactComponents(data.children, root, false);
-      }
-
-      if (isHtml) {
-        return createReactComponents(data.children ?? null, root, true);
-      }
-
-      return Object.keys(data)
-        .filter((key) => !isMetadata(key))
-        .map((key) => createReactComponents(data[key], root, suppressRender))
-        .find((x) => x);
-    } else {
-      const props = Object.keys(data).reduce((obj, key) => {
-        if (isMetadata(key)) return obj;
-        // Native attributes (including style objects) are props, not render trees.
-        // Children and motif-backed attributes still resolve through Quilt.
-        obj[key] =
-          !isHtml || key === "children" || data[key]?.[MOTIF]
-            ? createReactComponents(data[key], root, false)
-            : data[key];
-        return obj;
-      }, {});
-      return React.createElement(component || type, props);
-    }
-  }
-
-  if (data[MOTIF]) {
-    if (root[data[MOTIF]]) {
-      return createReactComponents(root[data[MOTIF]], root, suppressRender);
-    }
-
-    // Allow default values
-    if (data[data[MOTIF]]) {
-      return createReactComponents(data[data[MOTIF]], root, suppressRender);
-    }
-
-    throw new Error(`Invalid ref in createReactComponents: ${data[MOTIF]}`);
-  }
-
-  throw new Error("Unexpected data passed to createReactComponents.");
+// Motifs resolve against the complete patch, including falsy and null values.
+function resolveMotif(data, root) {
+  const name = data[MOTIF];
+  if (typeof name !== "string") throw new RenderDataError("Invalid motif name.");
+  if (has(root, name)) return root[name];
+  if (has(data, name)) return data[name];
+  throw new RenderDataError(`Invalid ref in createReactComponents: ${name}`);
 }
 
-export default function App(props) {
-  return createReactComponents(props.patch, props.patch, props.isClient);
+export function createRenderTree(patch) {
+  // Validate literal props too; cycles there must not escape into React.
+  const ancestors = new Set();
+  let inputNodes = 10000;
+  function validate(value, depth = 0) {
+    if (depth > 128 || --inputNodes < 0) throw new RenderDataError("Render data exceeds the depth or node limit.");
+    if (value === null || typeof value !== "object") return;
+    if (ancestors.has(value)) throw new RenderDataError("Cyclic render data.");
+    ancestors.add(value);
+    for (const child of Object.values(value)) validate(child, depth + 1);
+    ancestors.delete(value);
+  }
+  validate(patch);
+  const active = new Set();
+  let remaining = 10000;
+
+  function render(data, depth = 0) {
+    if (depth > 128 || --remaining < 0) {
+      throw new RenderDataError("Render data exceeds the depth or node limit.");
+    }
+    if (data === null || typeof data !== "object") return data;
+    if (active.has(data)) throw new RenderDataError("Cyclic render data or motif reference.");
+    active.add(data);
+    try {
+      if (Array.isArray(data)) return data.map((item) => render(item, depth + 1));
+      const type = data[TYPE];
+      const component = has(COMPONENTS, type) ? COMPONENTS[type] : undefined;
+      const isHtml = typeof type === "string" && HTML_TAG_NAME.test(type);
+      if (!component && !isHtml) {
+        if (has(data, MOTIF)) return render(resolveMotif(data, patch), depth + 1);
+        throw new RenderDataError("Unexpected data passed to createReactComponents.");
+      }
+
+      const props = {};
+      for (const key of Object.keys(data)) {
+        if (isMetadata(key)) continue;
+        const value = data[key];
+        // Attributes and structured props remain data. Only explicit trees,
+        // children, and Page's named slots are interpreted as render trees.
+        props[key] = key === "children" || (component === Page && (key === "head" || key === "body")) || isTree(value)
+          ? render(value, depth + 1)
+          : value;
+      }
+      return React.createElement(component || type, props);
+    } finally {
+      active.delete(data);
+    }
+  }
+
+  const element = render(patch);
+  const roots = [];
+  function collect(node) {
+    if (Array.isArray(node)) return node.forEach(collect);
+    if (!React.isValidElement(node)) return;
+    if (node.type === ReactRoot) roots.push(node);
+    if (node.type === Page) {
+      collect(node.props.head);
+      collect(node.props.body);
+    } else {
+      collect(node.props.children);
+    }
+  }
+  collect(element);
+  if (roots.length > 1) throw new RenderDataError("A page may contain at most one ReactRoot.");
+  return { element, root: roots[0] };
+}
+
+export default function App({ patch, isClient = false }) {
+  const { element, root } = createRenderTree(patch);
+  if (!isClient) return element;
+  if (!root) throw new RenderDataError("Client rendering requires one ReactRoot.");
+  return root.props.children;
 }
