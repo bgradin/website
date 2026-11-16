@@ -286,34 +286,34 @@
             {
               "ui:type": "section",
               "className": "panel",
-              "key": "redirect-domains",
+              "key": "allowed-origins",
               "children": [
                 {
                   "ui:type": "h2",
-                  "children": "Return URL domains"
+                  "children": "Allowed origins"
                 },
                 {
                   "ui:type": "p",
                   "className": "muted",
-                  "children": "Allow login and registration to return to these exact domains. HTTPS is required except for localhost, where any port is allowed. Same-origin return URLs are always allowed."
+                  "children": "Domains allowed to access the API and receive login redirects. Enter only the domain name. HTTPS is required except for localhost."
                 },
                 {
                   "ui:type": "ul",
-                  "id": "redirect-domains"
+                  "id": "allowed-origins"
                 },
                 {
                   "ui:type": "form",
-                  "id": "redirect-domain-form",
+                  "id": "allowed-origin-form",
                   "className": "toolbar",
                   "children": [
                     {
                       "ui:type": "label",
-                      "htmlFor": "redirect-domain",
+                      "htmlFor": "allowed-origin",
                       "children": "Domain"
                     },
                     {
                       "ui:type": "input",
-                      "id": "redirect-domain",
+                      "id": "allowed-origin",
                       "name": "domain",
                       "type": "text",
                       "required": true,

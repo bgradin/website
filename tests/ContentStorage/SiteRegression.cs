@@ -16,6 +16,7 @@ using Gradinware.Dto;
 using Gradinware.Models.Authentication;
 using Gradinware.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -127,6 +128,7 @@ internal static class SiteRegression
     var environment = new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = "Production" };
     var store = new RedirectDomainStore(configuration, environment);
     Check(store.GetDomains().SequenceEqual(new[] { "dnd.gradinware.com" }), "production domain list is seeded");
+    CheckCors(store);
     using var services = new ServiceCollection().AddSingleton(db).BuildServiceProvider();
     var context = new DefaultHttpContext { RequestServices = services };
     var controller = new AdminController(db) { ControllerContext = new ControllerContext { HttpContext = context } };
@@ -164,6 +166,50 @@ internal static class SiteRegression
       new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = "Development" });
     Check(development.GetDomains().SequenceEqual(new[] { "localhost" }), "development allow list is separate from production");
     Check(File.Exists(Path.Combine(Environment.GetEnvironmentVariable("DATA_DIRECTORY"), "sqlite", "site.db")), "domain data uses site.db");
+  }
+
+  private static void CheckCors(RedirectDomainStore store)
+  {
+    var services = new ServiceCollection();
+    new Startup().ConfigureServices(services);
+    services.AddSingleton(store);
+    using var provider = services.BuildServiceProvider();
+    var app = new ApplicationBuilder(provider);
+    app.UseCors();
+    app.Run(context => { context.Response.StatusCode = 401; return Task.CompletedTask; });
+    var pipeline = app.Build();
+
+    DefaultHttpContext Request(string origin)
+    {
+      var context = new DefaultHttpContext { RequestServices = provider };
+      context.Request.Headers.Origin = origin;
+      context.Request.Method = "OPTIONS";
+      context.Request.Headers["Access-Control-Request-Method"] = "PUT";
+      context.Request.Headers["Access-Control-Request-Headers"] = "authorization,content-type,x-site-action";
+      pipeline(context).GetAwaiter().GetResult();
+      return context;
+    }
+
+    var allowed = Request("https://dnd.gradinware.com");
+    Check(allowed.Response.StatusCode == 204 &&
+      allowed.Response.Headers.AccessControlAllowOrigin == "https://dnd.gradinware.com" &&
+      allowed.Response.Headers.AccessControlAllowCredentials == "true" &&
+      allowed.Response.Headers.AccessControlAllowMethods.ToString().Contains("PUT") &&
+      allowed.Response.Headers.AccessControlAllowHeaders.ToString().Contains("x-site-action"),
+      "CORS preflight allows configured domains, credentials, methods, and API headers");
+    foreach (var origin in new[] { "https://untrusted.test", "https://dnd.gradinware.com.evil.test",
+      "https://sub.dnd.gradinware.com", "http://dnd.gradinware.com", "null", "https://dnd.gradinware.com/path" })
+      Check(!Request(origin).Response.Headers.ContainsKey("Access-Control-Allow-Origin"), "CORS rejects " + origin);
+    store.Change("www.gradinware.com", true);
+    Check(Request("https://www.gradinware.com").Response.Headers.AccessControlAllowOrigin == "https://www.gradinware.com",
+      "CORS accepts newly added redirect domains without restart");
+    store.Change("www.gradinware.com", false);
+    Check(!Request("https://www.gradinware.com").Response.Headers.ContainsKey("Access-Control-Allow-Origin"),
+      "CORS rejects removed redirect domains without restart");
+    store.Change("localhost", true);
+    Check(Request("http://localhost:3000").Response.Headers.AccessControlAllowOrigin == "http://localhost:3000",
+      "CORS permits HTTP localhost with any port when configured");
+    store.Change("localhost", false);
   }
 
   public static async Task Run(string directory)

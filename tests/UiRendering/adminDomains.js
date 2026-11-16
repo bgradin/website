@@ -13,11 +13,11 @@ function element() {
 }
 
 (async () => {
-  const elements = Object.fromEntries(['users', 'session-name', 'redirect-domains', 'redirect-domain-form',
-    'redirect-domain', 'user-count', 'page-number', 'previous', 'next', 'clear-cache', 'status'].map(id => [id, element()]));
+  const elements = Object.fromEntries(['users', 'session-name', 'allowed-origins', 'allowed-origin-form',
+    'allowed-origin', 'user-count', 'page-number', 'previous', 'next', 'clear-cache', 'status'].map(id => [id, element()]));
   const button = element();
-  elements['redirect-domain-form'].querySelector = () => button;
-  elements['redirect-domain-form'].reset = () => { elements['redirect-domain'].value = ''; };
+  elements['allowed-origin-form'].querySelector = () => button;
+  elements['allowed-origin-form'].reset = () => { elements['allowed-origin'].value = ''; };
   const requests = [];
   let domains = ['dnd.gradinware.com'];
   let fail = false;
@@ -47,12 +47,12 @@ function element() {
   };
   vm.runInNewContext(fs.readFileSync('src/ui/public/assets/account.js', 'utf8'), context);
   for (let turn = 0; turn < 10; turn++) await new Promise(setImmediate);
-  const list = elements['redirect-domains'];
+  const list = elements['allowed-origins'];
   assert.equal(list.children[0].children[0].textContent, 'dnd.gradinware.com ');
-  elements['redirect-domain'].value = ' app.example.test ';
-  await elements['redirect-domain-form'].submit({ preventDefault() {} });
+  elements['allowed-origin'].value = ' app.example.test ';
+  await elements['allowed-origin-form'].submit({ preventDefault() {} });
   assert.equal(list.children.length, 2);
-  assert.equal(elements['redirect-domain'].value, '');
+  assert.equal(elements['allowed-origin'].value, '');
   await list.children[1].children[1].onclick();
   assert.equal(list.children.length, 1);
   fail = true;

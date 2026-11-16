@@ -47,6 +47,16 @@ namespace Gradinware.Services
       return domain;
     }
 
+    public bool IsAllowedOrigin(string origin)
+    {
+      return Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+        string.IsNullOrEmpty(uri.UserInfo) && uri.AbsolutePath == "/" &&
+        string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment) &&
+        (uri.Scheme == Uri.UriSchemeHttps ||
+          (uri.Host == "localhost" && uri.Scheme == Uri.UriSchemeHttp)) &&
+        GetDomains().Contains(uri.Host);
+    }
+
     public string[] GetDomains()
     {
       using var connection = Open();

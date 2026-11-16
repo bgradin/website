@@ -304,8 +304,8 @@
       'Signed in as ' + session.user.firstName + ' ' + session.user.lastName;
     let page = 1;
 
-    function renderDomains(domains) {
-      const list = getElement('redirect-domains');
+    function renderAllowedOrigins(domains) {
+      const list = getElement('allowed-origins');
       list.replaceChildren();
       for (const domain of domains) {
         const item = document.createElement('li');
@@ -319,7 +319,7 @@
           remove.disabled = true;
           try {
             const result = await api('admin/redirect-domains', { method: 'DELETE', body: JSON.stringify({ domain }) });
-            renderDomains(result.domains);
+            renderAllowedOrigins(result.domains);
             showStatus('Domain removed.');
           } catch (error) {
             showStatus(error.message, true);
@@ -333,16 +333,16 @@
       if (!domains.length) list.textContent = 'No external domains are allowed.';
     }
 
-    const domainForm = getElement('redirect-domain-form');
-    domainForm.addEventListener('submit', async event => {
+    const allowedOriginForm = getElement('allowed-origin-form');
+    allowedOriginForm.addEventListener('submit', async event => {
       event.preventDefault();
-      const button = domainForm.querySelector('button[type="submit"]');
+      const button = allowedOriginForm.querySelector('button[type="submit"]');
       button.disabled = true;
       try {
-        const domain = getElement('redirect-domain').value.trim();
+        const domain = getElement('allowed-origin').value.trim();
         const result = await api('admin/redirect-domains', { method: 'POST', body: JSON.stringify({ domain }) });
-        renderDomains(result.domains);
-        domainForm.reset();
+        renderAllowedOrigins(result.domains);
+        allowedOriginForm.reset();
         showStatus('Domain added.');
       } catch (error) {
         showStatus(error.message, true);
@@ -428,7 +428,7 @@
 
     await Promise.all([
       loadUsers(),
-      api('admin/redirect-domains').then(result => renderDomains(result.domains)),
+      api('admin/redirect-domains').then(result => renderAllowedOrigins(result.domains)),
     ]);
   }
 
