@@ -24,11 +24,12 @@ namespace Gradinware.Controllers
     private bool HasActionHeader => Request.Headers["X-Site-Action"] == "1";
 
     [HttpGet("config")]
-    public IActionResult Config()
+    public IActionResult Config([FromServices] RedirectDomainStore domains)
     {
       return Ok(new
       {
-        captchaSiteKey = Startup.Configuration["Recaptcha:SiteKey"]
+        captchaSiteKey = Startup.Configuration["Recaptcha:SiteKey"],
+        accountRedirectDomains = domains.GetDomains()
       });
     }
 

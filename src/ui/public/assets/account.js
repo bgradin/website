@@ -87,23 +87,28 @@
     });
   }
 
-  function returnDestination(session, action) {
+  function returnDestination(session, action, allowedDomains = []) {
     const value = new URLSearchParams(location.search).get('returnUrl');
     if (value) {
       try {
         const url = new URL(value, location.origin);
-        if (url.origin === location.origin && ['http:', 'https:'].includes(url.protocol)) {
+        const current = new URL(location.origin);
+        // Match exact configured domains; localhost also permits HTTP.
+        const allowedDomain = allowedDomains.includes(url.hostname) &&
+          (url.protocol === 'https:' || (url.hostname === 'localhost' && url.protocol === 'http:'));
+        if ((url.origin === current.origin || allowedDomain) &&
+            ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) {
           url.searchParams.set('action', action);
-          return url.pathname + url.search + url.hash;
+          return url.origin === current.origin ? url.pathname + url.search + url.hash : url.href;
         }
       } catch (_) { /* Fall back when the destination is invalid. */ }
     }
     return session.isAdmin ? '/admin/' : '/account/';
   }
 
-  function showSignedIn(session, form) {
+  function showSignedIn(session, form, allowedDomains) {
     updateSessionNavigation(session);
-    location.assign(returnDestination(session, form.id === 'register-form' ? 'register' : 'login'));
+    location.assign(returnDestination(session, form.id === 'register-form' ? 'register' : 'login', allowedDomains));
   }
 
   function loadCaptcha(siteKey) {
@@ -137,9 +142,9 @@
   async function initAccountForm() {
     const loginForm = getElement('login-form');
     const registrationForm = getElement('register-form');
+    const config = await api('site/config');
 
     if (registrationForm) {
-      const config = await api('site/config');
       if (!config.captchaSiteKey) {
         showStatus('Registration is temporarily unavailable.', true);
         return;
@@ -167,7 +172,7 @@
         const endpoint = isRegistration ? 'users' : 'users/sessions';
         await api(endpoint, { method: 'POST', body: JSON.stringify(data) });
         const session = await api('site/session');
-        showSignedIn(session, form);
+        showSignedIn(session, form, config.accountRedirectDomains || []);
       } catch (error) {
         showStatus(error.message, true);
         if (window.grecaptcha) window.grecaptcha.reset();
@@ -299,6 +304,53 @@
       'Signed in as ' + session.user.firstName + ' ' + session.user.lastName;
     let page = 1;
 
+    function renderDomains(domains) {
+      const list = getElement('redirect-domains');
+      list.replaceChildren();
+      for (const domain of domains) {
+        const item = document.createElement('li');
+        const name = document.createElement('span');
+        name.textContent = domain + ' ';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Remove';
+        remove.setAttribute('aria-label', 'Remove ' + domain);
+        remove.onclick = async () => {
+          remove.disabled = true;
+          try {
+            const result = await api('admin/redirect-domains', { method: 'DELETE', body: JSON.stringify({ domain }) });
+            renderDomains(result.domains);
+            showStatus('Domain removed.');
+          } catch (error) {
+            showStatus(error.message, true);
+          } finally {
+            remove.disabled = false;
+          }
+        };
+        item.append(name, remove);
+        list.append(item);
+      }
+      if (!domains.length) list.textContent = 'No external domains are allowed.';
+    }
+
+    const domainForm = getElement('redirect-domain-form');
+    domainForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = domainForm.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const domain = getElement('redirect-domain').value.trim();
+        const result = await api('admin/redirect-domains', { method: 'POST', body: JSON.stringify({ domain }) });
+        renderDomains(result.domains);
+        domainForm.reset();
+        showStatus('Domain added.');
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
     async function loadUsers() {
       const result = await api('admin/users?page=' + page);
       const users = getElement('users');
@@ -374,7 +426,10 @@
       }
     };
 
-    await loadUsers();
+    await Promise.all([
+      loadUsers(),
+      api('admin/redirect-domains').then(result => renderDomains(result.domains)),
+    ]);
   }
 
   async function init() {

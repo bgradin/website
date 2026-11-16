@@ -24,6 +24,7 @@ namespace Gradinware
             {
                 var db = scope.ServiceProvider.GetRequiredService<AccountContext>();
                 db.Database.Migrate();
+                scope.ServiceProvider.GetRequiredService<DndContext>().EnsureSchema();
                 foreach (var user in db.Users.ToList().Where(user => !user.Password.IsPasswordHash()))
                 {
                     user.Password = user.Password.EncryptPassword();

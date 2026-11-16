@@ -284,6 +284,52 @@
               "key": "2"
             },
             {
+              "ui:type": "section",
+              "className": "panel",
+              "key": "redirect-domains",
+              "children": [
+                {
+                  "ui:type": "h2",
+                  "children": "Return URL domains"
+                },
+                {
+                  "ui:type": "p",
+                  "className": "muted",
+                  "children": "Allow login and registration to return to these exact domains. HTTPS is required except for localhost, where any port is allowed. Same-origin return URLs are always allowed."
+                },
+                {
+                  "ui:type": "ul",
+                  "id": "redirect-domains"
+                },
+                {
+                  "ui:type": "form",
+                  "id": "redirect-domain-form",
+                  "className": "toolbar",
+                  "children": [
+                    {
+                      "ui:type": "label",
+                      "htmlFor": "redirect-domain",
+                      "children": "Domain"
+                    },
+                    {
+                      "ui:type": "input",
+                      "id": "redirect-domain",
+                      "name": "domain",
+                      "type": "text",
+                      "required": true,
+                      "maxLength": 253,
+                      "placeholder": "app.example.com"
+                    },
+                    {
+                      "ui:type": "button",
+                      "type": "submit",
+                      "children": "Add domain"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "ui:type": "p",
               "id": "status",
               "role": "status",

@@ -23,6 +23,34 @@ namespace Gradinware.Controllers
     // A custom header keeps cookie-authenticated mutations limited to same-origin callers.
     private bool HasActionHeader => Request.Headers["X-Site-Action"] == "1";
 
+    [HttpGet("redirect-domains")]
+    public IActionResult RedirectDomains([FromServices] RedirectDomainStore store)
+    {
+      if (!SiteSession.IsAdmin(HttpContext)) return StatusCode(403);
+      return Ok(new { domains = store.GetDomains() });
+    }
+
+    public sealed class RedirectDomainRequest
+    {
+      public string Domain { get; set; }
+    }
+
+    [HttpPost("redirect-domains")]
+    public IActionResult AddRedirectDomain(RedirectDomainRequest request, [FromServices] RedirectDomainStore store)
+      => ChangeRedirectDomain(request, store, true);
+
+    [HttpDelete("redirect-domains")]
+    public IActionResult RemoveRedirectDomain(RedirectDomainRequest request, [FromServices] RedirectDomainStore store)
+      => ChangeRedirectDomain(request, store, false);
+
+    private IActionResult ChangeRedirectDomain(RedirectDomainRequest request, RedirectDomainStore store, bool add)
+    {
+      if (!SiteSession.IsAdmin(HttpContext) || !HasActionHeader) return StatusCode(403);
+      if (RedirectDomainStore.Normalize(request?.Domain) == null)
+        return BadRequest(new { error = "Enter a domain name without a scheme, port, or path." });
+      return Ok(new { domains = store.Change(request.Domain, add) });
+    }
+
     [HttpGet("users")]
     public async Task<IActionResult> Users([FromQuery] int page = 1)
     {

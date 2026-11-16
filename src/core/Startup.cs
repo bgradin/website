@@ -25,6 +25,7 @@ namespace Gradinware
     public void ConfigureServices(IServiceCollection services)
     {
       services.AddLogging();
+      services.AddSingleton<RedirectDomainStore>();
       services.AddHttpClient("captcha", client => client.Timeout = TimeSpan.FromSeconds(10));
       services.AddAuthentication("site").AddCookie("site", options =>
       {
@@ -52,6 +53,7 @@ namespace Gradinware
       services.AddControllers();
       services.AddHttpClient<IReactSsrClient, ReactSsrClient>();
       services.AddDbContext<AccountContext>();
+      services.AddDbContext<DndContext>();
       services.AddSingleton<IEmailSender, SmtpEmailSender>();
       services.AddRateLimiter(options => options.AddPolicy("auth", context =>
         RateLimitPartition.GetFixedWindowLimiter(

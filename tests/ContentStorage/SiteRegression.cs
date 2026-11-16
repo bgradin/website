@@ -121,6 +121,51 @@ internal static class SiteRegression
       "existing API bearer tokens identify the same local account");
   }
 
+  private static void CheckRedirectDomains(IConfiguration configuration, AccountContext db, int adminId)
+  {
+    configuration["AccountRedirectDomains:0"] = "dnd.gradinware.com";
+    var environment = new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = "Production" };
+    var store = new RedirectDomainStore(configuration, environment);
+    Check(store.GetDomains().SequenceEqual(new[] { "dnd.gradinware.com" }), "production domain list is seeded");
+    using var services = new ServiceCollection().AddSingleton(db).BuildServiceProvider();
+    var context = new DefaultHttpContext { RequestServices = services };
+    var controller = new AdminController(db) { ControllerContext = new ControllerContext { HttpContext = context } };
+    var request = new AdminController.RedirectDomainRequest { Domain = " APP.Example.Test " };
+    Check((controller.RedirectDomains(store) as StatusCodeResult)?.StatusCode == 403 &&
+      (controller.AddRedirectDomain(request, store) as StatusCodeResult)?.StatusCode == 403 &&
+      (controller.RemoveRedirectDomain(request, store) as StatusCodeResult)?.StatusCode == 403,
+      "anonymous cannot read or modify redirect domains");
+    context.User = SiteSession.Principal(adminId + 100);
+    context.Request.Headers["X-Site-Action"] = "1";
+    Check((controller.RedirectDomains(store) as StatusCodeResult)?.StatusCode == 403 &&
+      (controller.AddRedirectDomain(request, store) as StatusCodeResult)?.StatusCode == 403 &&
+      (controller.RemoveRedirectDomain(request, store) as StatusCodeResult)?.StatusCode == 403,
+      "non-admin cannot read or modify redirect domains even with the action header");
+    context.Request.Headers.Remove("X-Site-Action");
+    context.User = SiteSession.Principal(adminId);
+    Check((controller.AddRedirectDomain(request, store) as StatusCodeResult)?.StatusCode == 403,
+      "redirect domain changes require the action header");
+    context.Request.Headers["X-Site-Action"] = "1";
+    Check(controller.AddRedirectDomain(request, store) is OkObjectResult && store.GetDomains().Contains("app.example.test"),
+      "administrator can add a normalized domain");
+    controller.AddRedirectDomain(request, store);
+    Check(store.GetDomains().Length == 2, "duplicate domains are idempotent");
+    foreach (var invalid in new[] { "https://example.test", "example.test/path", "localhost:3000", "*.example.test", "", "example.test." })
+      Check(controller.AddRedirectDomain(new() { Domain = invalid }, store) is BadRequestObjectResult,
+        "invalid redirect domain rejected: " + invalid);
+    var reopened = new RedirectDomainStore(configuration, environment);
+    Check(reopened.GetDomains().Contains("app.example.test"), "domain changes persist in site.db");
+    Check(controller.RemoveRedirectDomain(request, reopened) is OkObjectResult && !store.GetDomains().Contains("app.example.test"),
+      "administrator can remove a domain");
+    controller.RemoveRedirectDomain(new() { Domain = "dnd.gradinware.com" }, store);
+    Check(new RedirectDomainStore(configuration, environment).GetDomains().Length == 0, "empty list persists without reseeding");
+    configuration["AccountRedirectDomains:0"] = "localhost";
+    var development = new RedirectDomainStore(configuration,
+      new Microsoft.Extensions.Hosting.Internal.HostingEnvironment { EnvironmentName = "Development" });
+    Check(development.GetDomains().SequenceEqual(new[] { "localhost" }), "development allow list is separate from production");
+    Check(File.Exists(Path.Combine(Environment.GetEnvironmentVariable("DATA_DIRECTORY"), "sqlite", "site.db")), "domain data uses site.db");
+  }
+
   public static async Task Run(string directory)
   {
     CheckPasswordRequirements();
@@ -161,6 +206,7 @@ internal static class SiteRegression
         .Build();
       typeof(Startup).GetProperty(nameof(Startup.Configuration)).SetValue(null, configuration);
 
+      CheckRedirectDomains(configuration, db, admin.Id);
       await CheckLocalLogin(db, admin, directory);
 
       var registration = new UsersController(db, new CaptchaFactory())
