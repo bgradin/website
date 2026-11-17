@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -71,9 +72,39 @@ public sealed class DndController(AccountContext accounts, DndContext db) : Cont
             && field.ValueKind == JsonValueKind.String && ValidFieldName(field.GetString());
     }
 
-    private static bool ValidData(JsonElement data) => data.ValueKind == JsonValueKind.Object
+    private static bool SupportedSchema(int version) => version is 1 or 2;
+
+    private static bool ValidAttacks(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Array) return false;
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in value.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.Object
+                || !entry.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String
+                || !ValidFieldName(id.GetString()) || !ids.Add(id.GetString())
+                || !entry.TryGetProperty("collection", out var collection) || collection.ValueKind != JsonValueKind.String
+                || collection.GetString() is not ("weapons" or "spells")
+                || !entry.TryGetProperty("name", out var name) || name.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(name.GetString())) return false;
+            var properties = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in entry.EnumerateObject())
+            {
+                if (!properties.Add(property.Name)) return false;
+                if (property.Name is "id" or "collection" or "name") continue;
+                if (property.Name == "legacy" && property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False) continue;
+                if (property.Name is "damage" or "bonus" && property.Value.ValueKind == JsonValueKind.String) continue;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool ValidData(JsonElement data, int schemaVersion) => data.ValueKind == JsonValueKind.Object
         && data.EnumerateObject().All(property => ValidFieldName(property.Name)
-            && (property.Name == "formulas"
+            && (property.Name == "attacksSpellcasting" && schemaVersion == 2
+                ? ValidAttacks(property.Value)
+                : property.Name == "formulas"
                 ? property.Value.ValueKind == JsonValueKind.Object
                     && property.Value.EnumerateObject().All(formula => ValidFieldName(formula.Name)
                         && formula.Value.ValueKind == JsonValueKind.Array
@@ -88,8 +119,8 @@ public sealed class DndController(AccountContext accounts, DndContext db) : Cont
         var id = UserId();
         if (!id.HasValue) return Unauthorized();
         if (Request.Headers["X-Site-Action"] != "1") return StatusCode(403);
-        if (request.SchemaVersion != 1 || request.Revision != 0 || !ValidData(request.Data))
-            return BadRequest(new { error = "New sheets require schema version 1, revision 0, and valid character sheet data." });
+        if (!SupportedSchema(request.SchemaVersion) || request.Revision != 0 || !ValidData(request.Data, request.SchemaVersion))
+            return BadRequest(new { error = "New sheets require schema version 1 or 2, revision 0, and valid character sheet data." });
         var document = new DndDocument
         {
             UserId = id.Value, SchemaVersion = request.SchemaVersion,
@@ -107,12 +138,15 @@ public sealed class DndController(AccountContext accounts, DndContext db) : Cont
         var id = UserId();
         if (!id.HasValue) return Unauthorized();
         if (Request.Headers["X-Site-Action"] != "1") return StatusCode(403);
-        if (request.SchemaVersion != 1 || request.Revision < 0 || request.Revision == long.MaxValue || !ValidData(request.Data))
+        if (!SupportedSchema(request.SchemaVersion) || request.Revision < 0 || request.Revision == long.MaxValue || !ValidData(request.Data, request.SchemaVersion))
             return BadRequest(new { error = "Unsupported schema or invalid character sheet data." });
         var document = await db.Documents.SingleOrDefaultAsync(d => d.UserId == id.Value && d.Id == sheetId);
         if (document == null) return NotFound();
         if (document.Revision != request.Revision)
             return Conflict(new { error = "The sheet changed elsewhere. Reload before saving." });
+        // Older clients must not replace a migrated list with their version 1 fields.
+        if (request.SchemaVersion < document.SchemaVersion)
+            return Conflict(new { error = "This sheet requires a newer application version. Reload before saving." });
         document.SchemaVersion = request.SchemaVersion;
         document.Data = request.Data.GetRawText();
         document.Revision = checked(request.Revision + 1);

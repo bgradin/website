@@ -68,7 +68,7 @@ try
     Check(await two.Save(first, Payload(1)) is NotFoundResult);
     Check(await two.Delete(first) is NotFoundResult);
     Check(await one.Save(first, Payload()) is ConflictObjectResult);
-    Check(await one.Save(first, Payload(1, 2)) is BadRequestObjectResult);
+    Check(await one.Save(first, Payload(1, 3)) is BadRequestObjectResult);
     Check(await one.Create(Payload(1)) is BadRequestObjectResult);
     one.Request.Headers.Remove("X-Site-Action");
     Check(((StatusCodeResult)await one.Create(Payload())).StatusCode == 403);
@@ -130,6 +130,53 @@ try
     Check(await other.Documents.CountAsync() == 3);
     Check(!await other.Documents.AnyAsync(d => d.Id == first));
     Check(Body(await one.List()).GetProperty("sheets").GetArrayLength() == 2);
+    // Version 2 stores structured attack lists, while version 1 remains scalar-only.
+    DndController.SaveRequest V2(string json, long revision = 0) => new()
+        { SchemaVersion = 2, Revision = revision, Data = JsonSerializer.Deserialize<JsonElement>(json) };
+    const string attacks = """
+        {"name":"Hero","atkSpellNotes":"Preserve notes","attacksSpellcasting":[
+          {"id":"w1","collection":"weapons","name":"Dagger"},
+          {"id":"s1","collection":"spells","name":"Aid"},
+          {"id":"legacy-2","collection":"weapons","name":"Custom attack","legacy":true,"damage":"1d8 fire","bonus":"+4"}
+        ],"formulas":{"speed":["30"]}}
+        """;
+    var v2Id = CreatedId(await one.Create(V2(attacks)));
+    var v2Loaded = Body(await one.Load(v2Id));
+    Check(v2Loaded.GetProperty("schemaVersion").GetInt32() == 2);
+    Check(JsonElement.DeepEquals(v2Loaded.GetProperty("data"), V2(attacks).Data));
+    Check(await one.Create(DataPayload(attacks, 0)) is BadRequestObjectResult);
+    Check(await one.Save(v2Id, DataPayload("{}", 1)) is ConflictObjectResult);
+    Check(Body(await one.Load(v2Id)).GetProperty("revision").GetInt64() == 1);
+    Check(await one.Save(v2Id, V2("{\"attacksSpellcasting\":[]}", 1)) is OkObjectResult);
+    Check(await one.Save(v2Id, V2(attacks, 1)) is ConflictObjectResult);
+    Check(Body(await one.Load(v2Id)).GetProperty("data").GetProperty("attacksSpellcasting").GetArrayLength() == 0);
+    foreach (var invalidAttack in new[] {
+        "null", "{}", "[null]", "[false]", "[{}]",
+        "[{\"id\":\"a\",\"collection\":\"armor\",\"name\":\"Mail\"}]",
+        "[{\"id\":\"a\",\"collection\":\"weapons\",\"name\":\" \"}]",
+        "[{\"id\":\"\",\"collection\":\"weapons\",\"name\":\"Dagger\"}]",
+        "[{\"id\":\"a\",\"collection\":\"weapons\",\"name\":\"Dagger\",\"damage\":4}]",
+        "[{\"id\":\"a\",\"collection\":\"weapons\",\"name\":\"Dagger\",\"bonus\":false}]",
+        "[{\"id\":\"a\",\"collection\":\"weapons\",\"name\":\"Dagger\",\"legacy\":\"true\"}]",
+        "[{\"id\":\"a\",\"collection\":\"weapons\",\"name\":\"Dagger\",\"extra\":true}]",
+        "[{\"id\":\"a\",\"collection\":\"spells\",\"name\":\"Aid\"},{\"id\":\"a\",\"collection\":\"spells\",\"name\":\"Aid\"}]",
+        "[{\"id\":\"a\",\"id\":\"b\",\"collection\":\"spells\",\"name\":\"Aid\"}]"
+    })
+    {
+        var invalid = "{\"attacksSpellcasting\":" + invalidAttack + "}";
+        Check(await one.Create(V2(invalid)) is BadRequestObjectResult);
+        Check(await one.Save(v2Id, V2(invalid, 2)) is BadRequestObjectResult);
+    }
+    Check(await one.Create(V2("{\"speed\":30}")) is BadRequestObjectResult);
+    Check(await one.Save(v2Id, V2("{\"formulas\":{\"speed\":[]}}", 2)) is BadRequestObjectResult);
+    // Upgrade an existing sheet without bypassing its revision or changing unrelated data.
+    var upgradeId = CreatedId(await one.Create(DataPayload("{\"atkSpellNotes\":\"notes\"}", 0)));
+    Check(await one.Save(upgradeId, V2("{\"atkSpellNotes\":\"notes\",\"attacksSpellcasting\":[]}", 0)) is ConflictObjectResult);
+    Check(await one.Save(upgradeId, V2("{\"atkSpellNotes\":\"notes\",\"attacksSpellcasting\":[]}", 1)) is OkObjectResult);
+    Check(Body(await one.Load(upgradeId)).GetProperty("schemaVersion").GetInt32() == 2);
+    Check(await one.Save(upgradeId, Payload(2)) is ConflictObjectResult);
+    Check(await one.Delete(upgradeId) is NoContentResult);
+    Check(await one.Delete(v2Id) is NoContentResult);
     Environment.SetEnvironmentVariable("DATA_DIRECTORY", Path.Combine(root, "fresh"));
     using (var fresh = new DndContext())
     {
